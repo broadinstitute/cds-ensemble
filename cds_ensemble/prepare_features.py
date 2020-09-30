@@ -76,9 +76,9 @@ def prepare_universal_feature_set(
     # confounders, # TODO
 ):
     feature_metadata = pd.DataFrame(columns=["feature_id", "feature_name", "dataset"])
-
     for feature_info in feature_infos:
-        df = pd.read_feather().set_index("Row.name")
+        print(feature_info.dataset_name)
+        df = pd.read_feather(feature_info.file_name).set_index("Row.name")
 
         if feature_info.data_format == "table":
             num = df.select_dtypes(include="number")
@@ -90,12 +90,14 @@ def prepare_universal_feature_set(
 
             # One-hot encode the non-numeric columns
             cat = df.select_dtypes(exclude="number")
-
-            one_hot, feature_metadata = one_hot_encode_and_standardize_col_name(
-                cat, feature_info.dataset_name
-            )
-            feature_metadata = feature_metadata.append(dataset_feature_metadata)
-            df = num.merge(one_hot, left_index=True, right_index=True)
+            if len(cat.columns) > 0:
+                one_hot, feature_metadata = one_hot_encode_and_standardize_col_name(
+                    cat, feature_info.dataset_name
+                )
+                feature_metadata = feature_metadata.append(dataset_feature_metadata)
+                df = num.merge(one_hot, left_index=True, right_index=True)
+            else:
+                df = num
         else:
             df = df.apply(normalize_col, result_type="broadcast")
 
@@ -106,7 +108,6 @@ def prepare_universal_feature_set(
             feature_metadata = feature_metadata.append(dataset_feature_metadata)
 
         feature_info.set_dataframe(df.filter(items=target_samples, axis="index"))
-
     combined_features = pd.concat(
         [feature_info.data for feature_info in feature_infos],
         axis="columns",
@@ -169,12 +170,24 @@ def prepare_features(
     feature_infos: List[FeatureInfo],
     confounders: Optional[str],
 ):
+    features_in_any_model: Set[str] = set()
+    for model_config in model_configs.values():
+        features_in_any_model.update(model_config["Features"])
+        if model_config["Confounders"]:
+            features_in_any_model.add("Confounders")
+
+    subsetted_feature_infos = [
+        feature_info
+        for feature_info in feature_infos
+        if feature_info.dataset_name in features_in_any_model
+    ]
+
     combined_features, feature_metadata = prepare_universal_feature_set(
-        target_samples, feature_infos
+        target_samples, subsetted_feature_infos
     )
 
     # Subset all?
-    all_model_features, all_model_required_samples = subset_by_model_config(
+    all_model_features, all_model_feature_metadata = subset_by_model_config(
         model_configs["Unbiased"],
         feature_infos,
         confounders,
@@ -182,4 +195,4 @@ def prepare_features(
         feature_metadata,
     )
 
-    return all_model_features, all_model_required_samples
+    return all_model_features, all_model_feature_metadata

@@ -24,14 +24,12 @@ def main():
     type=int,
     help="If specified, will only keep the top N targets, ranked by variance",
 )
-@click.option(
-    "--gene-filter", multiple=True, help="If specified, will only keep the listed genes"
-)
+@click.option("--gene-filter", help="If specified, will only keep the listed genes")
 def prepare_y(
     input: str,
     output: str,
     top_variance_filter: Optional[int],
-    gene_filter: Optional[List[str]],
+    gene_filter: Optional[str],
 ):
     if not os.path.exists(input):
         click.secho(f"File {input} not found")
@@ -42,7 +40,13 @@ def prepare_y(
         return
 
     try:
-        df = pd.read_csv(input, index_col=0)
+        if input.endswith(".ftr") or input.endswith(".feather"):
+            df = pd.read_feather(input)
+            df.set_index(df.columns[0])
+        elif input.endswith(".tsv"):
+            df = pd.read_csv(input, index_col=0, sep="\t")
+        else:
+            df = pd.read_csv(input, index_col=0)
     except:
         click.secho(f"Could not read {input} as CSV", fg="red")
         return
@@ -54,8 +58,13 @@ def prepare_y(
         return
 
     try:
+        gene_filter_list: Optional[List[str]] = None
+
+        if gene_filter is not None:
+            gene_filter_list = [gene.strip() for gene in gene_filter.split(",")]
+
         # Filter targets based on variance and/or gene
-        filtered_df = prepare_targets(df, top_variance_filter, gene_filter)
+        filtered_df = prepare_targets(df, top_variance_filter, gene_filter_list)
 
         # Make output parent directories if they don't already exist
         pathlib.Path(os.path.dirname(output)).mkdir(parents=True, exist_ok=True)
@@ -111,15 +120,25 @@ def prepare_x(
 
     with open(model_config) as f:
         # TODO ?
-        parsed_model_config = yaml.load(f, Loader=yaml.SafeLoader)["Unbiased"]
+        parsed_model_config = yaml.load(f, Loader=yaml.SafeLoader)
 
-    target_samples = set(pd.read_feather(targets, columns=["Row.name"]))
+    target_samples = set(pd.read_feather(targets, columns=["Row.name"])["Row.name"])
     feature_infos = [
         FeatureInfo(**fi)
         for fi in pd.read_csv(feature_info, sep="\t").to_dict(orient="records")
     ]
 
-    todo = prepare_features(parsed_model_config, target_samples, feature_infos)
+    # TODO handle related
+    all_model_features, all_model_feature_metadata = prepare_features(
+        parsed_model_config, target_samples, feature_infos, confounders
+    )
+
+    if output_format == ".csv":
+        all_model_features.to_csv(output)
+    else:
+        all_model_features.reset_index().to_feather(output)
+
+    all_model_feature_metadata.reset_index().to_feather("feature_metadata.ftr")
 
 
 @main.command()
