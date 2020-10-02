@@ -9,6 +9,7 @@ import pandas as pd
 
 from prepare_targets import prepare_targets
 from prepare_features import prepare_features, FeatureInfo
+from utilities import read_dataframe
 
 
 @click.group()
@@ -31,31 +32,21 @@ def prepare_y(
     top_variance_filter: Optional[int],
     gene_filter: Optional[str],
 ):
-    if not os.path.exists(input):
-        click.secho(f"File {input} not found")
-        return
-
     if top_variance_filter is not None and top_variance_filter < 1:
-        click.secho("Top variance filter must be >= 1", fg="red")
-        return
+        raise click.ClickException("Top variance filter must be >= 1")
 
     try:
-        if input.endswith(".ftr") or input.endswith(".feather"):
-            df = pd.read_feather(input)
-            df.set_index(df.columns[0])
-        elif input.endswith(".tsv"):
-            df = pd.read_csv(input, index_col=0, sep="\t")
-        else:
-            df = pd.read_csv(input, index_col=0)
-    except:
-        click.secho(f"Could not read {input} as CSV", fg="red")
-        return
+        df = read_dataframe(input)
+    except FileNotFoundError:
+        raise click.ClickException(f"File {input} not found")
+
+    except pd.ParserError:
+        raise click.ClickException(f"Could not read {input} as CSV")
 
     try:
         df = df.astype(float)
-    except:
-        click.secho(f"Values in {input} must all be numbers", fg="red")
-        return
+    except ValueError:
+        raise click.ClickException(f"Values in {input} must all be numbers")
 
     try:
         gene_filter_list: Optional[List[str]] = None
@@ -72,7 +63,7 @@ def prepare_y(
         # Reset index because feather does not support indexes, then output as feather
         filtered_df.reset_index().to_feather(output)
     except ValueError as e:
-        click.secho(str(e), fg="red")
+        raise click.ClickException(str(e))
 
 
 @main.command()
@@ -115,8 +106,7 @@ def prepare_x(
 ):
     for p in [model_config, targets, feature_info]:
         if not os.path.exists(p):
-            click.secho(f"File {p} not found", fg="red")
-            return
+            raise click.ClickException(f"File {p} not found")
 
     with open(model_config) as f:
         # TODO ?
