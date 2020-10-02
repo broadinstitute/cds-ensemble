@@ -1,0 +1,11 @@
+,numeric confounder,binary confounder,categorical confounder
+sample-0,0.6320304202663791,1,blue
+sample-1,1.0206044355569701,0,green
+sample-2,1.3904243006831087,0,blue
+sample-3,1.0288353600300046,1,red
+sample-4,0.7406715230829963,0,green
+sample-5,1.1153251870903724,1,blue
+sample-6,0.10356349341549898,0,green
+sample-7,0.9506041860230596,0,red
+sample-8,0.9041922064982706,0,blue
+sample-9,0.2470323501399605,0,red

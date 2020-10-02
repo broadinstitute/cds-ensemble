@@ -3,26 +3,7 @@ from typing import Dict, List, Literal, Optional, Set
 
 import pandas as pd
 
-
-@dataclass
-class FeatureInfo:
-    def __init__(
-        self,
-        dataset: str,
-        filename: str,
-        source_data: str,
-        source_version: int,
-        source_file: str,
-        format: Literal["matrix", "table"],
-    ):
-        self.dataset_name = dataset
-        self.file_name = filename
-        self.data_format = format
-        self.data: Optional[pd.DataFrame] = None
-        self.one_hot_mapping: Optional[Dict[str, str]]
-
-    def set_dataframe(self, df: pd.DataFrame):
-        self.data = df
+from .models import ModelConfig, FeatureInfo
 
 
 def normalize_col(col: pd.Series):
@@ -124,13 +105,13 @@ def prepare_universal_feature_set(
 
 
 def subset_by_model_config(
-    model_config,
+    model_config: ModelConfig,
     feature_infos: List[FeatureInfo],
     confounders: Optional[str],
     combined_features: pd.DataFrame,
     feature_metadata: pd.DataFrame,
 ):
-    features_to_use = model_config["Features"]
+    features_to_use = model_config.features
     if confounders is not None:
         features_to_use.append(confounders)
 
@@ -143,7 +124,7 @@ def subset_by_model_config(
 
     model_required_samples: Optional[Set[str]] = None
     for feature_info in feature_infos:
-        if feature_info not in model_config["Required"]:
+        if feature_info not in model_config.required_features:
             continue
 
         if model_required_samples is None:
@@ -162,16 +143,17 @@ def subset_by_model_config(
 
 
 def prepare_features(
-    model_configs,
+    model_configs: List[ModelConfig],
     target_samples: Set[str],
     feature_infos: List[FeatureInfo],
     confounders: Optional[str],
 ):
     features_in_any_model: Set[str] = set()
-    for model_config in model_configs.values():
-        features_in_any_model.update(model_config["Features"])
-        if model_config["Confounders"]:
-            features_in_any_model.add("Confounders")
+    for model_config in model_configs:
+        features_in_any_model.update(model_config.features)
+        # TODO: confounders
+        # if model_config.confounders:
+        #     features_in_any_model.add("Confounders")
 
     subsetted_feature_infos = [
         feature_info
@@ -185,7 +167,11 @@ def prepare_features(
 
     # Subset all?
     all_model_features, all_model_feature_metadata = subset_by_model_config(
-        model_configs["Unbiased"],
+        next(
+            model_config
+            for model_config in model_configs
+            if model_config.name == "Unbiased"
+        ),
         feature_infos,
         confounders,
         combined_features,

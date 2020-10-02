@@ -8,8 +8,9 @@ import click
 import pandas as pd
 
 from prepare_targets import prepare_targets
-from prepare_features import prepare_features, FeatureInfo
-from utilities import read_dataframe
+from prepare_features import prepare_features
+from parsing_utilities import read_dataframe, read_model_config, read_feature_info
+from models import FeatureInfo
 
 
 @click.group()
@@ -108,19 +109,14 @@ def prepare_x(
         if not os.path.exists(p):
             raise click.ClickException(f"File {p} not found")
 
-    with open(model_config) as f:
-        # TODO ?
-        parsed_model_config = yaml.load(f, Loader=yaml.SafeLoader)
+    model_configs = read_model_config(model_config)
 
     target_samples = set(pd.read_feather(targets, columns=["Row.name"])["Row.name"])
-    feature_infos = [
-        FeatureInfo(**fi)
-        for fi in pd.read_csv(feature_info, sep="\t").to_dict(orient="records")
-    ]
+    feature_infos = read_feature_info(feature_info)
 
     # TODO handle related
     all_model_features, all_model_feature_metadata = prepare_features(
-        parsed_model_config, target_samples, feature_infos, confounders
+        model_configs, target_samples, feature_infos, confounders
     )
 
     if output_format == ".csv":

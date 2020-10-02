@@ -1,0 +1,10 @@
+,numeric feature,binary feature,categorical feature
+sample-0,1.4105281866287782,0,blue
+sample-1,0.37152435857212285,1,red
+sample-2,0.7755209251010085,1,red
+sample-3,0.635158415134542,1,green
+sample-4,1.7992862037794704,0,red
+sample-5,1.9605213927551037,1,blue
+sample-6,1.0571027075465638,0,green
+sample-7,0.3612370420513962,1,green
+sample-9,0.8947724026494204,1,red
