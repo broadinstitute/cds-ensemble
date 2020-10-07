@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -8,6 +10,8 @@ from cds_ensemble.prepare_features import (
     prepare_numeric_features,
     prepare_categorical_features,
 )
+
+from .conftest import FIXTURE_DIR
 
 
 @pytest.mark.parametrize(
@@ -68,9 +72,28 @@ def test_standardize_col_name():
 # TODO: check that confounders does not get normalized
 
 
-def test_prepare_numeric_features():
-    pass
+@pytest.mark.datafiles(os.path.join(FIXTURE_DIR, "full_matrix.csv"))
+def test_prepare_numeric_features(feature_df: pd.DataFrame):
+    processed_df, feature_metadata = prepare_numeric_features(
+        feature_df, "a neat dataset", True
+    )
+    for i, row in feature_metadata.iterrows():
+        original_col = feature_df[row["feature_name"]]
+        processed_col = processed_df[row["feature_id"]]
+        assert processed_col.equals(
+            (original_col - original_col.mean()) / original_col.std()
+        )
 
 
-def test_prepare_categorical_features():
-    pass
+@pytest.mark.datafiles(os.path.join(FIXTURE_DIR, "full_table.csv"))
+def test_prepare_categorical_features(feature_df: pd.DataFrame):
+    categorical_df = feature_df.select_dtypes(exclude="number")
+    processed_df, feature_metadata = prepare_categorical_features(
+        categorical_df, "a neat dataset"
+    )
+    assert processed_df.shape == (
+        categorical_df.shape[0],
+        categorical_df["categorical feature"].unique().size,
+    )
+    assert (feature_metadata["feature_name"] == "categorical feature").all()
+    assert processed_df.isin([1, 0, np.nan]).all(axis=None)
