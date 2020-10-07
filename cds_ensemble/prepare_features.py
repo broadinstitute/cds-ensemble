@@ -1,33 +1,59 @@
 from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional, Set
+from typing import Dict, List, Literal, Optional, Set, Tuple
 
+import numpy as np
 import pandas as pd
 
 from .models import ModelConfig, FeatureInfo
 
 
-def normalize_col(col: pd.Series):
-    col = col - col.mean()
-    col = col / col.std()
+def normalize_col(col: pd.Series) -> pd.Series:
+    """Normalizes column by z-score. Ignores one-hot encoded columns.
+
+    Args:
+        col (pd.Series): [description]
+
+    Returns:
+        pd.Series: [description]
+    """
+    if col.isin([0, 1, np.nan]).all():
+        return col
+    col = (col - col.mean()) / col.std()
     return col
 
 
-def standardize_col_name(df: pd.DataFrame, dataset_name: str):
-    cols = df.columns
+def standardize_col_name(
+    df: pd.DataFrame, dataset_name: str
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Standardizes column names (by replacing whitespace and hyphens with underscores
+    and appending the dataset name) and returns map of dataframe with mapping
 
-    renamed_columns = df.add_suffix("_" + dataset_name).columns.str.replace(
-        r"[\s-]", "_"
-    )
+    Args:
+        df (pd.DataFrame): DataFrame whose columns will be renamed
+        dataset_name (str): Dataset name to append to column names
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: Copy of df with renamed columns, DataFrame
+        with columns ["feature_id": new column name, "feature_name": old column name,
+        "dataset": dataset name]
+    """
+    renames = {
+        old: new
+        for old, new in zip(
+            df.columns,
+            df.add_suffix("_" + dataset_name).columns.str.replace(r"[\s-]", "_"),
+        )
+    }
 
     feature_metadata = pd.DataFrame(
-        {"feature_id": renamed_columns, "feature_name": cols, "dataset": dataset_name}
+        {
+            "feature_id": renames.values(),
+            "feature_name": renames.keys(),
+            "dataset": dataset_name,
+        }
     )
 
-    df = df.rename(
-        columns=dict(
-            zip(feature_metadata["feature_name"], feature_metadata["feature_id"])
-        )
-    )
+    df = df.rename(columns=renames)
 
     return df, feature_metadata
 
@@ -48,44 +74,113 @@ def one_hot_encode_and_standardize_col_name(df: pd.DataFrame, dataset_name: str)
     return df, feature_metadata
 
 
+def prepare_numeric_features(
+    df: pd.DataFrame, dataset_name: str, normalize: bool
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Standardizes the column names of a DataFrame with only numeric values, and
+    normalizes column values if specified.
+
+    Args:
+        df (pd.DataFrame): [description]
+        dataset_name (str): [description]
+        normalize (bool): Whether to normalize the columns by z-score
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: [description]
+    """
+    if normalize:
+        df = df.apply(normalize_col, result_type="broadcast")
+    df, feature_metadata = standardize_col_name(df, dataset_name)
+    return df, feature_metadata
+
+
+def prepare_categorical_features(
+    df: pd.DataFrame, dataset_name: str
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """One-hot encodes columns and standardizes the column names of a DataFrame with
+    only non-numeric columns.
+
+    Args:
+        df (pd.DataFrame): [description]
+        dataset_name (str): [description]
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: [description]
+    """
+    feature_metadata: Optional[pd.DataFrame] = None
+    one_hot_dfs: List[pd.DataFrame] = []
+
+    for col in df.columns:
+        one_hot = pd.get_dummies(df[col], columns=[col])
+        one_hot, single_feature_metadata = standardize_col_name(one_hot, dataset_name)
+        # Set feature_name to original column name, not one-hot encoded column name
+        single_feature_metadata["feature_name"] = col
+
+        one_hot_dfs.append(one_hot)
+
+        if feature_metadata is None:
+            feature_metadata = single_feature_metadata
+        else:
+            feature_metadata = feature_metadata.append(single_feature_metadata)
+
+    df = pd.concat(one_hot_dfs, axis="columns")
+    return df, feature_metadata
+
+
+def prepare_single_dataset_features(
+    df: pd.DataFrame, dataset_name: str, normalize: bool = True
+):
+    """Standardizes the column names of a DataFrame, normalizes numeric columns values
+    if specified, and one-hot encodes non-numeric column values.
+
+    Args:
+        df (pd.DataFrame): [description]
+                dataset_name (str): [description]
+        dataset_name (str): [description]
+        normalize (bool): Whether to normalize the columns by z-score
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: [description]
+    """
+    # Process numeric
+    numeric_subset = df.select_dtypes(include="number")
+    numeric_subset, numeric_subset_feature_metadata = prepare_numeric_features(
+        numeric_subset, dataset_name, normalize
+    )
+    # If all columns in df are numeric, return
+    if numeric_subset.columns.equals(df.columns):
+        return numeric_subset, numeric_subset_feature_metadata
+
+    # Process non-numeric columns
+    categorical_subset = df.select_dtypes(exclude="number")
+    (
+        categorical_subset,
+        categorical_subset_feature_metadata,
+    ) = one_hot_encode_and_standardize_col_name(categorical_subset, dataset_name)
+
+    # Merge processed numeric and categorical data and feature info DataFrames
+    df = numeric_subset.merge(categorical_subset, left_index=True, right_index=True)
+    feature_metadata = numeric_subset_feature_metadata.append(
+        categorical_subset_feature_metadata
+    )
+    return df, feature_metadata
+
+
 def prepare_universal_feature_set(
     target_samples: Set[str],
     feature_infos: List[FeatureInfo],
     # confounders, # TODO
 ):
-    feature_metadata = pd.DataFrame(columns=["feature_id", "feature_name", "dataset"])
+    feature_metadatas: List[pd.DataFrame] = []
     for feature_info in feature_infos:
         print(feature_info.dataset_name)
         df = pd.read_feather(feature_info.file_name).set_index("Row.name")
 
-        if feature_info.data_format == "table":
-            num = df.select_dtypes(include="number")
-            num = num.apply(normalize_col, result_type="broadcast")
-            num, dataset_feature_metadata = standardize_col_name(
-                num, feature_info.dataset_name
-            )
-            feature_metadata = feature_metadata.append(dataset_feature_metadata)
-
-            # One-hot encode the non-numeric columns
-            cat = df.select_dtypes(exclude="number")
-            if len(cat.columns) > 0:
-                one_hot, feature_metadata = one_hot_encode_and_standardize_col_name(
-                    cat, feature_info.dataset_name
-                )
-                feature_metadata = feature_metadata.append(dataset_feature_metadata)
-                df = num.merge(one_hot, left_index=True, right_index=True)
-            else:
-                df = num
-        else:
-            df = df.apply(normalize_col, result_type="broadcast")
-
-            df, dataset_feature_metadata = standardize_col_name(
-                df, feature_info.dataset_name
-            )
-
-            feature_metadata = feature_metadata.append(dataset_feature_metadata)
-
+        df, single_dataset_feature_metadata = prepare_single_dataset_features(
+            df, feature_info.dataset_name
+        )
         feature_info.set_dataframe(df.filter(items=target_samples, axis="index"))
+        feature_metadatas.append(single_dataset_feature_metadata)
     combined_features = pd.concat(
         [feature_info.data for feature_info in feature_infos],
         axis="columns",
@@ -100,6 +195,8 @@ def prepare_universal_feature_set(
     combined_features = combined_features.dropna(how="all", axis=1)
 
     combined_features = combined_features.fillna(0)
+
+    feature_metadata = pd.concat(feature_metadatas, axis="rows")
 
     return combined_features, feature_metadata
 
