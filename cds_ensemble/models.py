@@ -1,10 +1,8 @@
-from dataclasses import dataclass
 from typing import Dict, List, Literal, Optional
 
 import pandas as pd
 
 
-@dataclass
 class ModelConfig:
     def __init__(
         self,
@@ -19,7 +17,6 @@ class ModelConfig:
         self.relation = relation
 
 
-@dataclass
 class FeatureInfo:
     def __init__(
         self, dataset: str, filename: str, data_format: Literal["matrix", "table"]
