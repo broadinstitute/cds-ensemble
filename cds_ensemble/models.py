@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 
@@ -18,14 +18,10 @@ class ModelConfig:
 
 
 class FeatureInfo:
-    def __init__(
-        self, dataset: str, filename: str, data_format: Literal["matrix", "table"]
-    ):
+    def __init__(self, dataset: str, filename: str):
         self.dataset_name = dataset
         self.file_name = filename
-        self.data_format = data_format
         self.data: Optional[pd.DataFrame] = None
-        self.one_hot_mapping: Optional[Dict[str, str]]
 
     def set_dataframe(self, df: pd.DataFrame):
         self.data = df

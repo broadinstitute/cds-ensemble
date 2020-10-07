@@ -55,9 +55,7 @@ def read_model_config(file_path: str) -> List[ModelConfig]:
 def read_feature_info(file_path: str) -> List[FeatureInfo]:
     df = read_dataframe(file_path, set_index=False)
     feature_infos = [
-        FeatureInfo(
-            dataset=row["dataset"], filename=row["filename"], data_format=row["format"]
-        )
+        FeatureInfo(dataset=row["dataset"], filename=row["filename"])
         for i, row in df.iterrows()
     ]
 
