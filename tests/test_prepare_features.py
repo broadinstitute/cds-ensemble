@@ -9,9 +9,12 @@ from cds_ensemble.prepare_features import (
     standardize_col_name,
     prepare_numeric_features,
     prepare_categorical_features,
+    prepare_single_dataset_features,
+    prepare_universal_feature_set,
 )
+from cds_ensemble.models import FeatureInfo
 
-from .conftest import FIXTURE_DIR
+from .conftest import FIXTURE_DIR, ALL_FILES, parse_feature_df, parse_all_feature_dfs
 
 
 @pytest.mark.parametrize(
@@ -73,7 +76,8 @@ def test_standardize_col_name():
 
 
 @pytest.mark.datafiles(os.path.join(FIXTURE_DIR, "full_matrix.csv"))
-def test_prepare_numeric_features(feature_df: pd.DataFrame):
+def test_prepare_numeric_features(datafiles):
+    feature_df = parse_feature_df(datafiles)
     processed_df, feature_metadata = prepare_numeric_features(
         feature_df, "a neat dataset", True
     )
@@ -86,7 +90,8 @@ def test_prepare_numeric_features(feature_df: pd.DataFrame):
 
 
 @pytest.mark.datafiles(os.path.join(FIXTURE_DIR, "full_table.csv"))
-def test_prepare_categorical_features(feature_df: pd.DataFrame):
+def test_prepare_categorical_features(datafiles):
+    feature_df = parse_feature_df(datafiles)
     categorical_df = feature_df.select_dtypes(exclude="number")
     processed_df, feature_metadata = prepare_categorical_features(
         categorical_df, "a neat dataset"
@@ -97,3 +102,32 @@ def test_prepare_categorical_features(feature_df: pd.DataFrame):
     )
     assert (feature_metadata["feature_name"] == "categorical feature").all()
     assert processed_df.isin([1, 0, np.nan]).all(axis=None)
+
+
+@pytest.mark.datafiles(os.path.join(FIXTURE_DIR, "full_table.csv"))
+def test_prepare_single_dataset_features(datafiles):
+    feature_df = parse_feature_df(datafiles)
+    #     df: pd.DataFrame, dataset_name: str, normalize: bool = True
+    processed_df, feature_metadata = prepare_single_dataset_features(
+        feature_df, "a dataset"
+    )
+    assert processed_df.shape[0] == feature_df.shape[0]
+    # There's one categorical column with 3 values
+    assert processed_df.shape[1] == feature_df.shape[1] + 2
+
+
+@ALL_FILES
+def test_prepare_universal_feature_set(datafiles):
+    feature_infos = [
+        FeatureInfo(os.path.splitext(os.path.basename(file_name))[0], file_name)
+        for file_name in datafiles.listdir()
+    ]
+
+    targets = pd.read_csv(os.path.join(FIXTURE_DIR, "target_matrix.csv"), index_col=0)
+    target_samples = set(targets.index)
+
+    universal_feature_set, feature_metadata = prepare_universal_feature_set(
+        target_samples, feature_infos
+    )
+
+    pass
