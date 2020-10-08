@@ -31,6 +31,25 @@ def read_dataframe(file_path: str, set_index: bool = True) -> pd.DataFrame:
     )
 
 
+def read_dataframe_row_headers(file_path: str) -> pd.Series:
+    """Reads a file as a feather, TSV, or CSV file based on extensions, and
+    returns only the "Row.name" column
+
+    Args:
+        file_path (str): Path of file to read
+
+    Returns:
+        pd.Series: Series with the "Row.name" column of the file
+    """
+    _, file_extension = os.path.splitext(file_path)
+    if file_extension in {".ftr", ".feather"}:
+        return pd.read_feather(file_path, columns=["Row.name"])
+
+    return pd.read_csv(
+        file_path, sep="\t" if file_extension == ".tsv" else ",", usecols=["Row.name"]
+    )
+
+
 def read_model_config(file_path: str) -> List[ModelConfig]:
     with open(file_path) as f:
         raw_model_configs = yaml.load(f, Loader=yaml.SafeLoader)

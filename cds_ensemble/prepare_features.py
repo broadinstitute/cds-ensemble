@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from .models import ModelConfig, FeatureInfo
+from .parsing_utilities import read_dataframe
 
 
 def normalize_col(col: pd.Series) -> pd.Series:
@@ -54,22 +55,6 @@ def standardize_col_name(
 
     df = df.rename(columns=renames)
 
-    return df, feature_metadata
-
-
-def one_hot_encode_and_standardize_col_name(df: pd.DataFrame, dataset_name: str):
-    feature_metadata = pd.DataFrame(columns=["feature_id", "feature_name", "dataset"])
-    one_hot_dfs: List[pd.DataFrame] = []
-
-    for col in df.columns:
-        one_hot = pd.get_dummies(df[col], columns=[col])
-        one_hot, dataset_feature_metadata = standardize_col_name(one_hot, dataset_name)
-        dataset_feature_metadata["feature_name"] = col
-
-        one_hot_dfs.append(one_hot)
-        feature_metadata = feature_metadata.append(dataset_feature_metadata)
-
-    df = pd.concat(one_hot_dfs, axis="columns")
     return df, feature_metadata
 
 
@@ -147,7 +132,7 @@ def prepare_single_dataset_features(
         numeric_subset, dataset_name, normalize
     )
     # If all columns in df are numeric, return
-    if numeric_subset.columns.equals(df.columns):
+    if numeric_subset.columns.size == df.columns.size:
         return numeric_subset, numeric_subset_feature_metadata
 
     # Process non-numeric columns
@@ -155,10 +140,10 @@ def prepare_single_dataset_features(
     (
         categorical_subset,
         categorical_subset_feature_metadata,
-    ) = one_hot_encode_and_standardize_col_name(categorical_subset, dataset_name)
+    ) = prepare_categorical_features(categorical_subset, dataset_name)
 
     # Merge processed numeric and categorical data and feature info DataFrames
-    df = numeric_subset.merge(categorical_subset, left_index=True, right_index=True)
+    df = pd.concat([numeric_subset, categorical_subset], axis="columns")
     feature_metadata = numeric_subset_feature_metadata.append(
         categorical_subset_feature_metadata
     )
@@ -166,20 +151,21 @@ def prepare_single_dataset_features(
 
 
 def prepare_universal_feature_set(
-    target_samples: Set[str],
+    target_samples: pd.Series,
     feature_infos: List[FeatureInfo],
     # confounders, # TODO
-):
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     feature_metadatas: List[pd.DataFrame] = []
     for feature_info in feature_infos:
         print(feature_info.dataset_name)
-        df = pd.read_feather(feature_info.file_name).set_index("Row.name")
+        df = read_dataframe(feature_info.file_name)
 
         df, single_dataset_feature_metadata = prepare_single_dataset_features(
             df, feature_info.dataset_name
         )
         feature_info.set_dataframe(df.filter(items=target_samples, axis="index"))
         feature_metadatas.append(single_dataset_feature_metadata)
+
     combined_features = pd.concat(
         [feature_info.data for feature_info in feature_infos],
         axis="columns",
@@ -240,7 +226,7 @@ def subset_by_model_config(
 
 def prepare_features(
     model_configs: List[ModelConfig],
-    target_samples: Set[str],
+    target_samples: pd.Series,
     feature_infos: List[FeatureInfo],
     confounders: Optional[str],
 ):

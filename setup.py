@@ -7,6 +7,6 @@ setup(
     install_requires=["click>=7", "pandas>=1", "pyyaml>=5"],
     entry_points="""
         [console_scripts]
-        cds-ensemble=cds-ensemble:cli
+        cds-ensemble=cds_ensemble.__main__:main
     """,
 )

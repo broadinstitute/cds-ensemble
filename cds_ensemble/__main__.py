@@ -7,10 +7,15 @@ from typing import List, Optional
 import click
 import pandas as pd
 
-from prepare_targets import prepare_targets
-from prepare_features import prepare_features
-from parsing_utilities import read_dataframe, read_model_config, read_feature_info
-from models import FeatureInfo
+from .prepare_targets import prepare_targets
+from .prepare_features import prepare_features
+from .parsing_utilities import (
+    read_dataframe,
+    read_dataframe_row_headers,
+    read_model_config,
+    read_feature_info,
+)
+from .models import FeatureInfo
 
 
 @click.group()
@@ -111,7 +116,7 @@ def prepare_x(
 
     model_configs = read_model_config(model_config)
 
-    target_samples = set(pd.read_feather(targets, columns=["Row.name"])["Row.name"])
+    target_samples = read_dataframe_row_headers(targets)
     feature_infos = read_feature_info(feature_info)
 
     # TODO handle related
