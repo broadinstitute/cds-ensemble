@@ -116,18 +116,58 @@ def test_prepare_single_dataset_features(datafiles):
     assert processed_df.shape[1] == feature_df.shape[1] + 2
 
 
-@ALL_FILES
-def test_prepare_universal_feature_set(datafiles):
+def test_prepare_universal_feature_set():
+    feature_files = {
+        "full_matrix": os.path.join(FIXTURE_DIR, "full_matrix.csv"),
+        "partial_matrix": os.path.join(FIXTURE_DIR, "partial_matrix.csv"),
+        "full_table": os.path.join(FIXTURE_DIR, "full_table.csv"),
+        "partial_table": os.path.join(FIXTURE_DIR, "partial_table.csv"),
+    }
+
     feature_infos = [
-        FeatureInfo(os.path.splitext(os.path.basename(file_name))[0], file_name)
-        for file_name in datafiles.listdir()
+        FeatureInfo(dataset_name, file_name)
+        for dataset_name, file_name in feature_files.items()
     ]
 
-    targets = pd.read_csv(os.path.join(FIXTURE_DIR, "target_matrix.csv"), index_col=0)
-    target_samples = set(targets.index)
+    target_samples = pd.read_csv(
+        os.path.join(FIXTURE_DIR, "target_matrix.csv"), index_col=0
+    ).index
 
     universal_feature_set, feature_metadata = prepare_universal_feature_set(
-        target_samples, feature_infos
+        target_samples, feature_infos, None
     )
 
-    pass
+    assert universal_feature_set.notnull().all(axis=None)
+    assert universal_feature_set.index.size == target_samples.size
+    assert universal_feature_set.columns.size == sum(
+        feature_info.data.columns.size for feature_info in feature_infos
+    )
+
+    confounders = pd.read_csv(os.path.join(FIXTURE_DIR, "confounders.csv"), index_col=0)
+
+    confounders_feature_info = FeatureInfo(
+        "confounders", os.path.join(FIXTURE_DIR, "confounders.csv")
+    )
+
+    universal_feature_set, feature_metadata = prepare_universal_feature_set(
+        target_samples, feature_infos, confounders_feature_info
+    )
+
+    assert (
+        universal_feature_set.columns.size
+        == sum(feature_info.data.columns.size for feature_info in feature_infos)
+        + confounders_feature_info.data.columns.size
+    )
+
+    # Confounders should not be scaled
+    assert np.allclose(
+        confounders.select_dtypes("number").values,
+        confounders_feature_info.data[
+            feature_metadata[
+                (feature_metadata["dataset"] == "confounders")
+                & feature_metadata["feature_name"].isin(
+                    confounders.select_dtypes("number").columns
+                )
+            ]["feature_id"]
+        ].values,
+    )

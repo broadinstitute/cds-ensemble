@@ -153,7 +153,7 @@ def prepare_single_dataset_features(
 def prepare_universal_feature_set(
     target_samples: pd.Series,
     feature_infos: List[FeatureInfo],
-    # confounders, # TODO
+    confounders: Optional[FeatureInfo],  # TODO
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     feature_metadatas: List[pd.DataFrame] = []
     for feature_info in feature_infos:
@@ -166,11 +166,18 @@ def prepare_universal_feature_set(
         feature_info.set_dataframe(df.filter(items=target_samples, axis="index"))
         feature_metadatas.append(single_dataset_feature_metadata)
 
-    combined_features = pd.concat(
-        [feature_info.data for feature_info in feature_infos],
-        axis="columns",
-        join="outer",
-    )
+    dataframes_to_combine = [feature_info.data for feature_info in feature_infos]
+
+    if confounders is not None:
+        df = read_dataframe(confounders.file_name)
+        df, confounders_feature_metadata = prepare_single_dataset_features(
+            df, confounders.dataset_name, normalize=False
+        )
+        confounders.set_dataframe(df.filter(items=target_samples, axis="index"))
+        feature_metadatas.append(confounders_feature_metadata)
+        dataframes_to_combine.append(df)
+
+    combined_features = pd.concat(dataframes_to_combine, axis="columns", join="outer")
 
     combined_features = combined_features.astype(float)
 
@@ -243,8 +250,12 @@ def prepare_features(
         if feature_info.dataset_name in features_in_any_model
     ]
 
+    confounders_feature_info: Optional[FeatureInfo] = None
+    if confounders is not None:
+        confounders_feature_info = FeatureInfo("confounders", confounders)
+
     combined_features, feature_metadata = prepare_universal_feature_set(
-        target_samples, subsetted_feature_infos
+        target_samples, subsetted_feature_infos, confounders_feature_info
     )
 
     # Subset all?
