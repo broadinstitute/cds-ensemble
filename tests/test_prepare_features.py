@@ -14,7 +14,7 @@ from cds_ensemble.prepare_features import (
 )
 from cds_ensemble.models import FeatureInfo
 
-from .conftest import FIXTURE_DIR, ALL_FILES, parse_feature_df, parse_all_feature_dfs
+from .conftest import FIXTURE_DIR, parse_feature_df
 
 
 @pytest.mark.parametrize(
@@ -75,9 +75,8 @@ def test_standardize_col_name():
 # TODO: check that confounders does not get normalized
 
 
-@pytest.mark.datafiles(os.path.join(FIXTURE_DIR, "full_matrix.csv"))
-def test_prepare_numeric_features(datafiles):
-    feature_df = parse_feature_df(datafiles)
+def test_prepare_numeric_features():
+    feature_df = parse_feature_df("full_matrix.csv")
     processed_df, feature_metadata = prepare_numeric_features(
         feature_df, "a neat dataset", True
     )
@@ -89,9 +88,8 @@ def test_prepare_numeric_features(datafiles):
         )
 
 
-@pytest.mark.datafiles(os.path.join(FIXTURE_DIR, "full_table.csv"))
-def test_prepare_categorical_features(datafiles):
-    feature_df = parse_feature_df(datafiles)
+def test_prepare_categorical_features():
+    feature_df = parse_feature_df("full_table.csv")
     categorical_df = feature_df.select_dtypes(exclude="number")
     processed_df, feature_metadata = prepare_categorical_features(
         categorical_df, "a neat dataset"
@@ -104,9 +102,8 @@ def test_prepare_categorical_features(datafiles):
     assert processed_df.isin([1, 0, np.nan]).all(axis=None)
 
 
-@pytest.mark.datafiles(os.path.join(FIXTURE_DIR, "full_table.csv"))
-def test_prepare_single_dataset_features(datafiles):
-    feature_df = parse_feature_df(datafiles)
+def test_prepare_single_dataset_features():
+    feature_df = parse_feature_df(os.path.join(FIXTURE_DIR, "full_table.csv"))
     #     df: pd.DataFrame, dataset_name: str, normalize: bool = True
     processed_df, feature_metadata = prepare_single_dataset_features(
         feature_df, "a dataset"
@@ -171,3 +168,7 @@ def test_prepare_universal_feature_set():
             ]["feature_id"]
         ].values,
     )
+
+
+def test_subset_by_model_config():
+    pass
