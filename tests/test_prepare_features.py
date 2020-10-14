@@ -132,7 +132,7 @@ def test_prepare_universal_feature_set():
     ).index
 
     universal_feature_set, feature_metadata = prepare_universal_feature_set(
-        target_samples, feature_infos, None
+        target_samples, feature_infos
     )
 
     assert universal_feature_set.notnull().all(axis=None)
@@ -146,17 +146,17 @@ def test_prepare_universal_feature_set():
     )
 
     confounders_feature_info = FeatureInfo(
-        "confounders", os.path.join(TEST_DATA_DIR, "confounders.csv")
+        "confounders", os.path.join(TEST_DATA_DIR, "confounders.csv"), normalize=False
     )
+
+    feature_infos.append(confounders_feature_info)
 
     universal_feature_set, feature_metadata = prepare_universal_feature_set(
-        target_samples, feature_infos, confounders_feature_info
+        target_samples, feature_infos
     )
 
-    assert (
-        universal_feature_set.columns.size
-        == sum(feature_info.data.columns.size for feature_info in feature_infos)
-        + confounders_feature_info.data.columns.size
+    assert universal_feature_set.columns.size == sum(
+        feature_info.data.columns.size for feature_info in feature_infos
     )
 
     # Confounders should not be scaled
@@ -185,17 +185,17 @@ def test_subset_by_model_config():
         FeatureInfo(dataset_name, file_name)
         for dataset_name, file_name in feature_files.items()
     ]
+    confounders_feature_info = FeatureInfo(
+        "confounders", os.path.join(TEST_DATA_DIR, "confounders.csv"), normalize=False
+    )
+    feature_infos.append(confounders_feature_info)
 
     target_samples = pd.read_csv(
         os.path.join(TEST_DATA_DIR, "target_matrix.csv"), index_col=0
     ).index
 
-    confounders_feature_info = FeatureInfo(
-        "confounders", os.path.join(TEST_DATA_DIR, "confounders.csv")
-    )
-
     universal_feature_set, feature_metadata = prepare_universal_feature_set(
-        target_samples, feature_infos, confounders_feature_info
+        target_samples, feature_infos
     )
 
     model_config = ModelConfig(

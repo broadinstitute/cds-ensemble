@@ -18,9 +18,10 @@ class ModelConfig:
 
 
 class FeatureInfo:
-    def __init__(self, dataset: str, filename: str):
+    def __init__(self, dataset: str, filename: str, normalize: bool = True):
         self.dataset_name = dataset
         self.file_name = filename
+        self.normalize = normalize
         self.data: Optional[pd.DataFrame] = None
 
     def set_dataframe(self, df: pd.DataFrame):

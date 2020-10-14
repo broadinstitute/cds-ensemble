@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 import yaml
@@ -72,10 +72,14 @@ def read_model_config(file_path: str) -> List[ModelConfig]:
     return model_configs
 
 
-def read_feature_info(file_path: str) -> List[FeatureInfo]:
+def read_feature_info(file_path: str, confounders: Optional[str]) -> List[FeatureInfo]:
     df = read_dataframe(file_path, set_index=False)
     feature_infos = [
-        FeatureInfo(dataset=row["dataset"], filename=row["filename"])
+        FeatureInfo(
+            dataset=row["dataset"],
+            filename=row["filename"],
+            normalize=row["dataset"] == confounders,
+        )
         for i, row in df.iterrows()
     ]
 

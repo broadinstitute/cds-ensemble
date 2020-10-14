@@ -117,7 +117,7 @@ def prepare_x(
     model_configs = read_model_config(model_config)
 
     target_samples = read_dataframe_row_headers(targets)
-    feature_infos = read_feature_info(feature_info)
+    feature_infos = read_feature_info(feature_info, confounders)
 
     # TODO handle related
     models_features_and_metadata = prepare_features(

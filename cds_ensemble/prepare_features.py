@@ -151,30 +151,31 @@ def prepare_single_dataset_features(
 
 
 def prepare_universal_feature_set(
-    target_samples: pd.Series,
-    feature_infos: List[FeatureInfo],
-    confounders: Optional[FeatureInfo],  # TODO
+    target_samples: pd.Series, feature_infos: List[FeatureInfo]
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Standardizes and merges features from `feature_infos` into one pd.DataFrame.
+
+    Args:
+        target_samples (pd.Series): Target samples/rows that are allowed in the merged
+            dataset
+        feature_infos (List[FeatureInfo]): List of FeatureInfos that have the file
+            names of the feature datasets to merge. DataFrames will be added.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: Merged features DataFrame, mapping from
+        original dataset/feature to new column name in merged DataFrame
+    """
     feature_metadatas: List[pd.DataFrame] = []
     for feature_info in feature_infos:
         df = read_dataframe(feature_info.file_name)
 
         df, single_dataset_feature_metadata = prepare_single_dataset_features(
-            df, feature_info.dataset_name
+            df, feature_info.dataset_name, feature_info.normalize
         )
         feature_info.set_dataframe(df.filter(items=target_samples.values, axis="index"))
         feature_metadatas.append(single_dataset_feature_metadata)
 
     dataframes_to_combine = [feature_info.data for feature_info in feature_infos]
-
-    if confounders is not None:
-        df = read_dataframe(confounders.file_name)
-        df, confounders_feature_metadata = prepare_single_dataset_features(
-            df, confounders.dataset_name, normalize=False
-        )
-        confounders.set_dataframe(df.filter(items=target_samples, axis="index"))
-        feature_metadatas.append(confounders_feature_metadata)
-        dataframes_to_combine.append(df)
 
     combined_features = pd.concat(dataframes_to_combine, axis="columns", join="outer")
 
@@ -198,15 +199,37 @@ def subset_by_model_config(
     confounders: Optional[str],
     combined_features: pd.DataFrame,
     feature_metadata: pd.DataFrame,
-):
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Subsets the combined features to only the features listed in the model
+    definition, and also filters samples to those found in the required features
+    datasets.
+
+    Args:
+        model_config (ModelConfig): The model definition
+        feature_infos (List[FeatureInfo]): FeatureInfos with processed data, used to
+            filter required samples
+        confounders (Optional[str]): Confounders dataset to include, if provided
+        combined_features (pd.DataFrame): DataFrame of all processed features
+        feature_metadata (pd.DataFrame): Corresponding metadata
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: Filtered combined features,
+            filtered metadata
+    """
     # TODO: handle related
     if model_config.relation != "All":
         return None, None
 
+    # All features listed in the model definitions Features or Required, and also the
+    # confounders, if provided
     features_to_use = model_config.features
-    if confounders is not None:
+    for feature in model_config.required_features:
+        if feature not in features_to_use:
+            features_to_use.append(feature)
+    if confounders is not None and confounders not in features_to_use:
         features_to_use.append(confounders)
 
+    # Filter metadata by datasets used and filter matching columns in combined_features
     model_feature_metadata = feature_metadata[
         feature_metadata["dataset"].isin(features_to_use)
     ]
@@ -214,6 +237,8 @@ def subset_by_model_config(
         items=model_feature_metadata["feature_id"], axis="columns"
     )
 
+    # For features that are listed as required, filter out samples that are not in the
+    # required dataset's samples
     model_required_samples: Optional[pd.Index] = None
     for feature_info in feature_infos:
         if feature_info.dataset_name not in model_config.required_features:
@@ -225,7 +250,6 @@ def subset_by_model_config(
             model_required_samples = model_required_samples.intersection(
                 feature_info.data.index
             )
-
     if model_required_samples is not None:
         model_features = model_features.filter(
             items=model_required_samples, axis="index"
@@ -240,9 +264,27 @@ def prepare_features(
     feature_infos: List[FeatureInfo],
     confounders: Optional[str],
 ) -> List[Tuple[str, pd.DataFrame, pd.DataFrame]]:
+    """Processes and merges features for each of the models in `model_configs`
+
+    Args:
+        model_configs (List[ModelConfig]): Model definitions for which to process
+            features
+        target_samples (pd.Series): Samples in the target, i.e. for which there exists
+            actual values to compare with predicted values
+        feature_infos (List[FeatureInfo]): FeatureInfos with dataset file names
+        confounders (Optional[str]): Name of confounders
+
+    Returns:
+        List[Tuple[str, pd.DataFrame, pd.DataFrame]]: List of (Processed and combined
+            features, mapping of original dataset/columns to processed columns) for all
+            models defined
+    """
     features_in_any_model: Set[str] = set()
     for model_config in model_configs:
         features_in_any_model.update(model_config.features)
+        features_in_any_model.update(model_config.required_features)
+        if confounders is not None:
+            features_in_any_model.add(confounders)
 
     subsetted_feature_infos = [
         feature_info
@@ -250,12 +292,8 @@ def prepare_features(
         if feature_info.dataset_name in features_in_any_model
     ]
 
-    confounders_feature_info: Optional[FeatureInfo] = None
-    if confounders is not None:
-        confounders_feature_info = FeatureInfo("confounders", confounders)
-
     combined_features, feature_metadata = prepare_universal_feature_set(
-        target_samples, subsetted_feature_infos, confounders_feature_info
+        target_samples, subsetted_feature_infos
     )
 
     models_features_and_metadata: List[Tuple[str, pd.DataFrame, pd.DataFrame]] = []
