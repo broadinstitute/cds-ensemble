@@ -11,10 +11,11 @@ from cds_ensemble.prepare_features import (
     prepare_categorical_features,
     prepare_single_dataset_features,
     prepare_universal_feature_set,
+    subset_by_model_config,
 )
-from cds_ensemble.models import FeatureInfo
+from cds_ensemble.models import ModelConfig, FeatureInfo
 
-from .conftest import FIXTURE_DIR, parse_feature_df
+from .conftest import TEST_DATA_DIR, parse_feature_df
 
 
 @pytest.mark.parametrize(
@@ -103,7 +104,7 @@ def test_prepare_categorical_features():
 
 
 def test_prepare_single_dataset_features():
-    feature_df = parse_feature_df(os.path.join(FIXTURE_DIR, "full_table.csv"))
+    feature_df = parse_feature_df(os.path.join(TEST_DATA_DIR, "full_table.csv"))
     #     df: pd.DataFrame, dataset_name: str, normalize: bool = True
     processed_df, feature_metadata = prepare_single_dataset_features(
         feature_df, "a dataset"
@@ -115,10 +116,10 @@ def test_prepare_single_dataset_features():
 
 def test_prepare_universal_feature_set():
     feature_files = {
-        "full_matrix": os.path.join(FIXTURE_DIR, "full_matrix.csv"),
-        "partial_matrix": os.path.join(FIXTURE_DIR, "partial_matrix.csv"),
-        "full_table": os.path.join(FIXTURE_DIR, "full_table.csv"),
-        "partial_table": os.path.join(FIXTURE_DIR, "partial_table.csv"),
+        "full_matrix": os.path.join(TEST_DATA_DIR, "full_matrix.csv"),
+        "partial_matrix": os.path.join(TEST_DATA_DIR, "partial_matrix.csv"),
+        "full_table": os.path.join(TEST_DATA_DIR, "full_table.csv"),
+        "partial_table": os.path.join(TEST_DATA_DIR, "partial_table.csv"),
     }
 
     feature_infos = [
@@ -127,7 +128,7 @@ def test_prepare_universal_feature_set():
     ]
 
     target_samples = pd.read_csv(
-        os.path.join(FIXTURE_DIR, "target_matrix.csv"), index_col=0
+        os.path.join(TEST_DATA_DIR, "target_matrix.csv"), index_col=0
     ).index
 
     universal_feature_set, feature_metadata = prepare_universal_feature_set(
@@ -140,10 +141,12 @@ def test_prepare_universal_feature_set():
         feature_info.data.columns.size for feature_info in feature_infos
     )
 
-    confounders = pd.read_csv(os.path.join(FIXTURE_DIR, "confounders.csv"), index_col=0)
+    confounders = pd.read_csv(
+        os.path.join(TEST_DATA_DIR, "confounders.csv"), index_col=0
+    )
 
     confounders_feature_info = FeatureInfo(
-        "confounders", os.path.join(FIXTURE_DIR, "confounders.csv")
+        "confounders", os.path.join(TEST_DATA_DIR, "confounders.csv")
     )
 
     universal_feature_set, feature_metadata = prepare_universal_feature_set(
@@ -171,4 +174,53 @@ def test_prepare_universal_feature_set():
 
 
 def test_subset_by_model_config():
-    pass
+    feature_files = {
+        "full_matrix": os.path.join(TEST_DATA_DIR, "full_matrix.csv"),
+        "partial_matrix": os.path.join(TEST_DATA_DIR, "partial_matrix.csv"),
+        "full_table": os.path.join(TEST_DATA_DIR, "full_table.csv"),
+        "partial_table": os.path.join(TEST_DATA_DIR, "partial_table.csv"),
+    }
+
+    feature_infos = [
+        FeatureInfo(dataset_name, file_name)
+        for dataset_name, file_name in feature_files.items()
+    ]
+
+    target_samples = pd.read_csv(
+        os.path.join(TEST_DATA_DIR, "target_matrix.csv"), index_col=0
+    ).index
+
+    confounders_feature_info = FeatureInfo(
+        "confounders", os.path.join(TEST_DATA_DIR, "confounders.csv")
+    )
+
+    universal_feature_set, feature_metadata = prepare_universal_feature_set(
+        target_samples, feature_infos, confounders_feature_info
+    )
+
+    model_config = ModelConfig(
+        "Unbiased",
+        ["full_matrix", "partial_matrix", "full_table", "partial_table"],
+        ["full_matrix", "confounders"],
+        "All",
+    )
+    all_feature_set, all_feature_metadata = subset_by_model_config(
+        model_config,
+        feature_infos,
+        "confounders",
+        universal_feature_set,
+        feature_metadata,
+    )
+    assert all_feature_set.equals(universal_feature_set)
+
+    model_config = ModelConfig(
+        "Unbiased", ["partial_matrix", "partial_table"], ["partial_table"], "All"
+    )
+    all_feature_set, all_feature_metadata = subset_by_model_config(
+        model_config,
+        feature_infos,
+        "confounders",
+        universal_feature_set,
+        feature_metadata,
+    )
+    assert all_feature_set.index.size < universal_feature_set.index.size

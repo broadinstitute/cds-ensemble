@@ -73,6 +73,7 @@ def prepare_y(
 
 
 @main.command()
+@click.option("--targets", required=True, help="Matrix of the targets we are modeling")
 @click.option(
     "--model-config",
     required=True,
@@ -80,16 +81,15 @@ def prepare_y(
     help="The file with model configurations (need to define format of this below) TODO",
 )
 @click.option(
+    "--feature-info",
+    required=True,
+    help="Table containing feature datasets required and filename columns",
+)
+@click.option(
     "--output",
     required=True,
     type=str,
     help="Full path to where to write the merged matrix",
-)
-@click.option("--targets", required=True, help="Matrix of the targets we are modeling")
-@click.option(
-    "--feature-info",
-    required=True,
-    help="Table containing feature datasets required and filename columns",
 )
 @click.option("--confounders", help="Table with target dataset specific QC, e.g. NNMD")
 @click.option(
@@ -103,9 +103,9 @@ def prepare_y(
 )
 def prepare_x(
     model_config: str,
-    output: str,
     targets: str,
     feature_info: str,
+    output: str,
     confounders: Optional[str],
     output_format: Optional[str],
     output_related: Optional[str],
@@ -120,16 +120,19 @@ def prepare_x(
     feature_infos = read_feature_info(feature_info)
 
     # TODO handle related
-    all_model_features, all_model_feature_metadata = prepare_features(
+    models_features_and_metadata = prepare_features(
         model_configs, target_samples, feature_infos, confounders
     )
 
-    if output_format == ".csv":
-        all_model_features.to_csv(output)
-    else:
-        all_model_features.reset_index().to_feather(output)
+    for (model_name, features, feature_metadata) in models_features_and_metadata:
+        if output_format == ".csv":
+            features.to_csv(f"{output}-{model_name}.csv")
+        else:
+            features.reset_index().to_feather(f"{output}-{model_name}.csv")
 
-    all_model_feature_metadata.reset_index().to_feather("feature_metadata.ftr")
+        feature_metadata.reset_index().to_feather(
+            f"{output}-{model_name}_feature_metadata.ftr"
+        )
 
 
 @main.command()

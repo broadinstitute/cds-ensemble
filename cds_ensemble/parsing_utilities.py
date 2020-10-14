@@ -33,21 +33,22 @@ def read_dataframe(file_path: str, set_index: bool = True) -> pd.DataFrame:
 
 def read_dataframe_row_headers(file_path: str) -> pd.Series:
     """Reads a file as a feather, TSV, or CSV file based on extensions, and
-    returns only the "Row.name" column
+    returns only the first column
 
     Args:
         file_path (str): Path of file to read
 
     Returns:
-        pd.Series: Series with the "Row.name" column of the file
+        pd.Series: Series with the first column of the file
     """
     _, file_extension = os.path.splitext(file_path)
     if file_extension in {".ftr", ".feather"}:
-        return pd.read_feather(file_path, columns=["Row.name"])
-
-    return pd.read_csv(
-        file_path, sep="\t" if file_extension == ".tsv" else ",", usecols=["Row.name"]
-    )
+        df = pd.read_feather(file_path, columns=[0])
+    else:
+        df = pd.read_csv(
+            file_path, sep="\t" if file_extension == ".tsv" else ",", usecols=[0]
+        )
+    return df[df.columns[0]]
 
 
 def read_model_config(file_path: str) -> List[ModelConfig]:

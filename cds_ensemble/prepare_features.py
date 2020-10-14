@@ -157,13 +157,12 @@ def prepare_universal_feature_set(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     feature_metadatas: List[pd.DataFrame] = []
     for feature_info in feature_infos:
-        print(feature_info.dataset_name)
         df = read_dataframe(feature_info.file_name)
 
         df, single_dataset_feature_metadata = prepare_single_dataset_features(
             df, feature_info.dataset_name
         )
-        feature_info.set_dataframe(df.filter(items=target_samples, axis="index"))
+        feature_info.set_dataframe(df.filter(items=target_samples.values, axis="index"))
         feature_metadatas.append(single_dataset_feature_metadata)
 
     dataframes_to_combine = [feature_info.data for feature_info in feature_infos]
@@ -200,6 +199,10 @@ def subset_by_model_config(
     combined_features: pd.DataFrame,
     feature_metadata: pd.DataFrame,
 ):
+    # TODO: handle related
+    if model_config.relation != "All":
+        return None, None
+
     features_to_use = model_config.features
     if confounders is not None:
         features_to_use.append(confounders)
@@ -211,16 +214,16 @@ def subset_by_model_config(
         items=model_feature_metadata["feature_id"], axis="columns"
     )
 
-    model_required_samples: Optional[Set[str]] = None
+    model_required_samples: Optional[pd.Index] = None
     for feature_info in feature_infos:
-        if feature_info not in model_config.required_features:
+        if feature_info.dataset_name not in model_config.required_features:
             continue
 
         if model_required_samples is None:
-            model_required_samples = set(feature_info.data.index)
+            model_required_samples = feature_info.data.index
         else:
             model_required_samples = model_required_samples.intersection(
-                set(feature_info.data.index)
+                feature_info.data.index
             )
 
     if model_required_samples is not None:
@@ -236,13 +239,10 @@ def prepare_features(
     target_samples: pd.Series,
     feature_infos: List[FeatureInfo],
     confounders: Optional[str],
-):
+) -> List[Tuple[str, pd.DataFrame, pd.DataFrame]]:
     features_in_any_model: Set[str] = set()
     for model_config in model_configs:
         features_in_any_model.update(model_config.features)
-        # TODO: confounders
-        # if model_config.confounders:
-        #     features_in_any_model.add("Confounders")
 
     subsetted_feature_infos = [
         feature_info
@@ -258,17 +258,19 @@ def prepare_features(
         target_samples, subsetted_feature_infos, confounders_feature_info
     )
 
-    # Subset all?
-    all_model_features, all_model_feature_metadata = subset_by_model_config(
-        next(
-            model_config
-            for model_config in model_configs
-            if model_config.name == "Unbiased"
-        ),
-        feature_infos,
-        confounders,
-        combined_features,
-        feature_metadata,
-    )
+    models_features_and_metadata: List[Tuple[str, pd.DataFrame, pd.DataFrame]] = []
 
-    return all_model_features, all_model_feature_metadata
+    for model_config in model_configs:
+        model_features, model_feature_metadata = subset_by_model_config(
+            model_config,
+            feature_infos,
+            confounders,
+            combined_features,
+            feature_metadata,
+        )
+        if model_features is not None:
+            models_features_and_metadata.append(
+                (model_config.name, model_features, model_feature_metadata)
+            )
+
+    return models_features_and_metadata
