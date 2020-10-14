@@ -1,0 +1,22 @@
+---
+Unbiased:
+  Features:
+  - full_matrix
+  - full_table
+  - partial_matrix
+  - partial_table
+  Required:
+  - full_matrix
+  Relation:    All
+  Exempt:
+Related:
+  Features:
+  - full_matrix
+  - full_table
+  - partial_matrix
+  - partial_table
+  Required:
+  - full_matrix
+  Relation:    MatchRelated
+  Exempt:
+  - partial_table
