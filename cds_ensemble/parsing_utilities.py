@@ -48,7 +48,7 @@ def read_dataframe_row_headers(file_path: str) -> pd.Series:
         df = pd.read_csv(
             file_path, sep="\t" if file_extension == ".tsv" else ",", usecols=[0]
         )
-    return df[df.columns[0]]
+    return df.squeeze()
 
 
 def read_model_config(file_path: str) -> List[ModelConfig]:
