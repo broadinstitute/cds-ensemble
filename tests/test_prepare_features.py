@@ -13,7 +13,7 @@ from cds_ensemble.prepare_features import (
     prepare_universal_feature_set,
     subset_by_model_config,
 )
-from cds_ensemble.models import ModelConfig, FeatureInfo
+from cds_ensemble.data_models import ModelConfig, FeatureInfo
 
 from .conftest import TEST_DATA_DIR, parse_feature_df
 

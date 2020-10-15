@@ -1,10 +1,10 @@
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 import yaml
 
-from .models import ModelConfig, FeatureInfo
+from .data_models import ModelConfig, FeatureInfo
 
 
 def read_dataframe(file_path: str, set_index: bool = True) -> pd.DataFrame:
@@ -51,20 +51,18 @@ def read_dataframe_row_headers(file_path: str) -> pd.Series:
     return df.squeeze()
 
 
-def read_model_config(file_path: str) -> List[ModelConfig]:
+def read_model_config(file_path: str) -> Dict[str, ModelConfig]:
     with open(file_path) as f:
         raw_model_configs = yaml.load(f, Loader=yaml.SafeLoader)
 
-    model_configs: List[ModelConfig] = []
+    model_configs: Dict[str, ModelConfig] = {}
     for model_name, model_config in raw_model_configs.items():
         try:
-            model_configs.append(
-                ModelConfig(
-                    name=model_name,
-                    features=model_config["Features"],
-                    required_features=model_config["Required"],
-                    relation=model_config["Relation"],
-                )
+            model_configs[model_name] = ModelConfig(
+                name=model_name,
+                features=model_config["Features"],
+                required_features=model_config["Required"],
+                relation=model_config["Relation"],
             )
         except KeyError as e:
             raise ValueError(f"Definition for model {model_name} is missing {str(e)}")

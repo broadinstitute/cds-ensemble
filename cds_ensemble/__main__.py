@@ -2,20 +2,21 @@ import os
 import pathlib
 import yaml
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import click
 import pandas as pd
 
 from .prepare_targets import prepare_targets
 from .prepare_features import prepare_features
+from .run_ensemble import run_ensemble
 from .parsing_utilities import (
     read_dataframe,
     read_dataframe_row_headers,
     read_model_config,
     read_feature_info,
 )
-from .models import FeatureInfo
+from .data_models import FeatureInfo
 
 
 @click.group()
@@ -136,14 +137,58 @@ def prepare_x(
 
 
 @main.command()
-@click.option("--x", required=True)
-@click.option("--y", required=True)
-@click.option("--valid_samples_file")
-@click.option("--feature-subset")
-@click.option("--target-range")
-@click.option("--targets")
-def fit_models():
-    pass
+@click.option(
+    "--x",
+    type=str,
+    required=True,
+    help="A feather file containing all features. The default is to use all features. A subset of features can be selected by specifying --feature-subset",
+)
+@click.option(
+    "--y",
+    type=str,
+    required=True,
+    help="A feature file containing all targets. The default is to fit each target sequentially. A subset of targets can be selected by specifying --target-range or --targets",
+)
+@click.option(
+    "--model-config",
+    type=str,
+    required=True,
+    help="The file with model configurations (need to define format of this below) TODO",
+)
+@click.option("--model", type=str, required=True)
+@click.option(
+    "--valid-samples-file",
+    type=str,
+    help="If selected, only use the following samples in the training",
+)
+@click.option(
+    "--feature-subset",
+    type=str,
+    help="if specified, use the given file to determine which features to subset. If not specified, all features will be used",
+)
+@click.option(
+    "--target-range",
+    nargs=2,
+    type=int,
+    help="if specified, fit models for targets whose indices are in this inclusive range",
+)
+@click.option(
+    "--targets", type=str, help="if specified, fit models for targets with these labels"
+)
+def fit_models(
+    x: str,
+    y: str,
+    model_config: str,
+    model: str,
+    valid_samples_file: Optional[str],
+    feature_subset: Optional[str],
+    target_range: Optional[Tuple[int, int]],
+    targets: Optional[str],
+):
+    features = read_dataframe(x)
+    targets = read_dataframe(y)
+    selected_model_config = read_model_config(model_config)[model]
+    run_ensemble(features, targets, selected_model_config)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import numpy as np
 import pandas as pd
 
-from .models import ModelConfig, FeatureInfo
+from .data_models import ModelConfig, FeatureInfo
 from .parsing_utilities import read_dataframe
 
 
@@ -259,7 +259,7 @@ def subset_by_model_config(
 
 
 def prepare_features(
-    model_configs: List[ModelConfig],
+    model_configs: Dict[str, ModelConfig],
     target_samples: pd.Series,
     feature_infos: List[FeatureInfo],
     confounders: Optional[str],
@@ -267,7 +267,7 @@ def prepare_features(
     """Processes and merges features for each of the models in `model_configs`
 
     Args:
-        model_configs (List[ModelConfig]): Model definitions for which to process
+        model_configs (Dict[str, ModelConfig]): Model definitions for which to process
             features
         target_samples (pd.Series): Samples in the target, i.e. for which there exists
             actual values to compare with predicted values
@@ -280,7 +280,7 @@ def prepare_features(
             models defined
     """
     features_in_any_model: Set[str] = set()
-    for model_config in model_configs:
+    for _, model_config in model_configs.items():
         features_in_any_model.update(model_config.features)
         features_in_any_model.update(model_config.required_features)
         if confounders is not None:
@@ -298,7 +298,7 @@ def prepare_features(
 
     models_features_and_metadata: List[Tuple[str, pd.DataFrame, pd.DataFrame]] = []
 
-    for model_config in model_configs:
+    for _, model_config in model_configs.items():
         model_features, model_feature_metadata = subset_by_model_config(
             model_config,
             feature_infos,
