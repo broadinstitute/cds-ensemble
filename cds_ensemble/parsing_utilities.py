@@ -63,6 +63,7 @@ def read_model_config(file_path: str) -> Dict[str, ModelConfig]:
                 features=model_config["Features"],
                 required_features=model_config["Required"],
                 relation=model_config["Relation"],
+                exempt=model_config.get("Exempt"),
             )
         except KeyError as e:
             raise ValueError(f"Definition for model {model_name} is missing {str(e)}")

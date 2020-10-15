@@ -10,11 +10,13 @@ class ModelConfig:
         features: List[str],
         required_features: List[str],
         relation: str,
+        exempt: Optional[List[str]],
     ):
         self.name = name
         self.features = features
         self.required_features = required_features
         self.relation = relation
+        self.exempt = exempt
 
 
 class FeatureInfo:

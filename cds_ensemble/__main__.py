@@ -9,7 +9,7 @@ import pandas as pd
 
 from .prepare_targets import prepare_targets
 from .prepare_features import prepare_features
-from .run_ensemble import run_ensemble
+from .run_ensemble import filter_run_ensemble_inputs, run_model
 from .parsing_utilities import (
     read_dataframe,
     read_dataframe_row_headers,
@@ -157,12 +157,16 @@ def prepare_x(
 )
 @click.option("--model", type=str, required=True)
 @click.option(
+    "--task-mode", type=click.Choice(["regress", "classify"]), default="regress"
+)
+@click.option("--n-folds", type=int, default=3)
+@click.option(
     "--valid-samples-file",
     type=str,
     help="If selected, only use the following samples in the training",
 )
 @click.option(
-    "--feature-subset",
+    "--feature-subset-file",
     type=str,
     help="if specified, use the given file to determine which features to subset. If not specified, all features will be used",
 )
@@ -170,25 +174,73 @@ def prepare_x(
     "--target-range",
     nargs=2,
     type=int,
+    callback=lambda ctx, param, value: value if len(value) == 2 else None,
     help="if specified, fit models for targets whose indices are in this inclusive range",
 )
 @click.option(
     "--targets", type=str, help="if specified, fit models for targets with these labels"
 )
+@click.option("--output-dir", type=str)
 def fit_models(
     x: str,
     y: str,
     model_config: str,
     model: str,
+    task_mode: str,
+    n_folds: Optional[int],
     valid_samples_file: Optional[str],
-    feature_subset: Optional[str],
+    feature_subset_file: Optional[str],
     target_range: Optional[Tuple[int, int]],
     targets: Optional[str],
+    output_dir: Optional[str],
 ):
-    features = read_dataframe(x)
-    targets = read_dataframe(y)
+    X = read_dataframe(x)
+    Y = read_dataframe(y)
     selected_model_config = read_model_config(model_config)[model]
-    run_ensemble(features, targets, selected_model_config)
+    related_table = None
+
+    valid_samples = None
+    if valid_samples_file is not None:
+        valid_samples = read_dataframe_row_headers(valid_samples_file)
+
+    feature_subset = None
+    if feature_subset_file is not None:
+        feature_subset = read_dataframe_row_headers(feature_subset_file)
+
+    target_list = None
+    if targets is not None:
+        target_list = targets.split(",")
+
+    try:
+        X, Y, start_col, end_col = filter_run_ensemble_inputs(
+            X, Y, valid_samples, feature_subset, target_range, target_list
+        )
+    except ValueError as e:
+        raise click.ClickException(str(e))
+
+    ensemble = run_model(
+        X,
+        Y,
+        selected_model_config,
+        n_folds,
+        start_col,
+        end_col,
+        task_mode,
+        related_table,
+    )
+
+    feature_file_path = (
+        f"{selected_model_config.name}_{start_col}_{end_col}_features.csv"
+    )
+    predictions_file_path = (
+        f"{selected_model_config.name}_{start_col}_{end_col}_predictions.csv"
+    )
+
+    if output_dir is not None:
+        feature_file_path = os.path.join(output_dir, feature_file_path)
+        predictions_file_path = os.path.join(output_dir, predictions_file_path)
+
+    ensemble.save_results(feature_file_path, predictions_file_path)
 
 
 if __name__ == "__main__":

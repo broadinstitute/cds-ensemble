@@ -14,3 +14,22 @@ TEST_CONFIG_DIR = os.path.join(
 def parse_feature_df(file_name: str):
     """Returns the sample file called [file_name] as a Pandas DataFrame."""
     return pd.read_csv(os.path.join(TEST_DATA_DIR, file_name), index_col=0)
+
+
+@pytest.fixture
+def feature_info_file(tmpdir):
+    feature_info = pd.DataFrame(
+        [
+            (dataset, os.path.join(TEST_DATA_DIR, dataset + ".csv"))
+            for dataset in [
+                "full_matrix",
+                "full_table",
+                "partial_matrix",
+                "partial_table",
+            ]
+        ],
+        columns=["dataset", "filename"],
+    )
+    feature_info_path = tmpdir.join("feature_info.csv")
+    feature_info.to_csv(feature_info_path, index=False)
+    return feature_info_path

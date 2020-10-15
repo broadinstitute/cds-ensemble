@@ -203,6 +203,7 @@ def test_subset_by_model_config():
         ["full_matrix", "partial_matrix", "full_table", "partial_table"],
         ["full_matrix", "confounders"],
         "All",
+        None,
     )
     all_feature_set, all_feature_metadata = subset_by_model_config(
         model_config,
@@ -214,7 +215,7 @@ def test_subset_by_model_config():
     assert all_feature_set.equals(universal_feature_set)
 
     model_config = ModelConfig(
-        "Unbiased", ["partial_matrix", "partial_table"], ["partial_table"], "All"
+        "Unbiased", ["partial_matrix", "partial_table"], ["partial_table"], "All", None
     )
     all_feature_set, all_feature_metadata = subset_by_model_config(
         model_config,
