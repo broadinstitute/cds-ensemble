@@ -12,6 +12,7 @@ from cds_ensemble.prepare_features import (
     prepare_single_dataset_features,
     prepare_universal_feature_set,
     subset_by_model_config,
+    format_related,
 )
 from cds_ensemble.data_models import ModelConfig, FeatureInfo
 
@@ -256,3 +257,33 @@ def test_subset_by_model_config():
         feature_metadata,
     )
     assert all_feature_set.index.size < universal_feature_set.index.size
+
+
+def test_format_related():
+    related_table = format_related(
+        {
+            "Related": ModelConfig(
+                name="Related",
+                features=[
+                    "full_matrix",
+                    "partial_matrix",
+                    "full_table",
+                    "partial_table",
+                ],
+                required_features=["full_matrix", "confounders"],
+                related_dataset="related",
+                relation="MatchRelated",
+                exempt=None,
+            )
+        },
+        [FeatureInfo("related", os.path.join(TEST_DATA_DIR, "related.csv"))],
+    )
+    expected = pd.DataFrame(
+        {
+            "target_gene_symbol": ["target_0", "target_1", "target_2", "target_3"],
+            "target_entrez_id": [0, 1, 2, 3],
+            "partner_gene_symbol": ["target_1", "target_0", "target_3", "target_2"],
+            "partner_entrez_id": [1, 0, 3, 2],
+        }
+    )
+    assert related_table.equals(expected)

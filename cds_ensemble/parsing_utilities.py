@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 import yaml
@@ -77,13 +77,24 @@ def read_model_config(file_path: str) -> Dict[str, ModelConfig]:
 
 def read_feature_info(file_path: str, confounders: Optional[str]) -> List[FeatureInfo]:
     df = read_dataframe(file_path, set_index=False)
-    feature_infos = [
-        FeatureInfo(
-            dataset=row["dataset"],
-            filename=row["filename"],
-            normalize=row["dataset"] == confounders,
-        )
-        for i, row in df.iterrows()
-    ]
+    feature_infos = []
+    for i, row in df.iterrows():
+        try:
+            if not os.path.exists(row["filename"]):
+                raise ValueError(f"File { row.filename } not found")
+            feature_infos.append(
+                FeatureInfo(
+                    dataset=row["dataset"],
+                    filename=row["filename"],
+                    normalize=row["dataset"] == confounders,
+                )
+            )
+        except KeyError as e:
+            raise ValueError(f"Feature info file is missing {str(e)} column")
 
     return feature_infos
+
+
+def split_gene_label(col: pd.Series) -> Tuple[pd.Series, pd.Series]:
+    split_gene_label = col.str.split(r" |\(|\)", expand=True)
+    return split_gene_label[0], split_gene_label[2].astype(int)

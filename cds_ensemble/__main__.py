@@ -8,7 +8,7 @@ import click
 import pandas as pd
 
 from .prepare_targets import prepare_targets
-from .prepare_features import prepare_features
+from .prepare_features import prepare_features, format_related
 from .run_ensemble import filter_run_ensemble_inputs, run_model
 from .parsing_utilities import (
     read_dataframe,
@@ -115,12 +115,24 @@ def prepare_x(
         if not os.path.exists(p):
             raise click.ClickException(f"File {p} not found")
 
-    model_configs = read_model_config(model_config)
+    try:
+        model_configs = read_model_config(model_config)
 
-    target_samples = read_dataframe_row_headers(targets)
-    feature_infos = read_feature_info(feature_info, confounders)
+        target_samples = read_dataframe_row_headers(targets)
+        feature_infos = read_feature_info(feature_info, confounders)
+    except ValueError as e:
+        raise click.ClickException(str(e))
 
-    # TODO handle related
+    try:
+        if output_related:
+            related_table = format_related(model_configs, feature_infos)
+            if output_format == ".csv":
+                related_table.to_csv(f"{output_related}.csv")
+            else:
+                related_table.reset_index.to_feather(f"{output_related}.ftr")
+    except ValueError as e:
+        raise click.ClickException(str(e))
+
     models_features_and_metadata = prepare_features(
         model_configs, target_samples, feature_infos, confounders
     )
@@ -128,12 +140,13 @@ def prepare_x(
     for (model_name, features, feature_metadata) in models_features_and_metadata:
         if output_format == ".csv":
             features.to_csv(f"{output}-{model_name}.csv")
+            feature_metadata.to_csv(f"{output}-{model_name}_feature_metadata.csv")
         else:
-            features.reset_index().to_feather(f"{output}-{model_name}.csv")
+            features.reset_index().to_feather(f"{output}-{model_name}.ftr")
 
-        feature_metadata.reset_index().to_feather(
-            f"{output}-{model_name}_feature_metadata.ftr"
-        )
+            feature_metadata.reset_index().to_feather(
+                f"{output}-{model_name}_feature_metadata.ftr"
+            )
 
 
 @main.command()

@@ -1,10 +1,10 @@
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
 
 from .data_models import ModelConfig, FeatureInfo
-from .parsing_utilities import GENE_LABEL_FORMAT, read_dataframe
+from .parsing_utilities import GENE_LABEL_FORMAT, read_dataframe, split_gene_label
 
 
 def normalize_col(col: pd.Series) -> pd.Series:
@@ -55,11 +55,9 @@ def standardize_col_name(
         }
     )
     if feature_metadata["feature_name"].str.match(GENE_LABEL_FORMAT).all():
-        split_gene_label = feature_metadata["feature_name"].str.split(
-            r" |\(|\)", expand=True
-        )
-        feature_metadata["gene_symbol"] = split_gene_label[0]
-        feature_metadata["entrez_id"] = split_gene_label[2].astype(int)
+        gene_symbol, entrez_id = split_gene_label(feature_metadata["feature_name"])
+        feature_metadata["gene_symbol"] = gene_symbol
+        feature_metadata["entrez_id"] = entrez_id
 
     df = df.rename(columns=renames)
 
@@ -320,3 +318,62 @@ def prepare_features(
             )
 
     return models_features_and_metadata
+
+
+def format_related(
+    model_configs: Mapping[str, ModelConfig], feature_infos: Iterable[FeatureInfo]
+) -> pd.DataFrame:
+    related_datasets = set(
+        model_config.related_dataset
+        for model_config in model_configs.values()
+        if model_config.related_dataset is not None
+    )
+
+    if len(related_datasets) == 0:
+        raise ValueError("No related dataset found for any of the model definitions")
+    elif len(related_datasets) > 1:
+        raise ValueError("Multiple related datasets found for model definitions")
+
+    related_dataset_name = related_datasets.pop()
+
+    try:
+        related_feature_info = next(
+            feature_info
+            for feature_info in feature_infos
+            if feature_info.dataset_name == related_dataset_name
+        )
+    except StopIteration:
+        raise ValueError(
+            f'No dataset "{related_dataset_name}" found in feature infos file'
+        )
+
+    unprocessed_related_table = read_dataframe(
+        related_feature_info.file_name, set_index=False
+    )
+    missing_columns = {"target", "partner"} - set(unprocessed_related_table.columns)
+    if len(missing_columns) > 0:
+        raise ValueError(f"Related dataset is missing columns: {missing_columns}")
+
+    if not (
+        unprocessed_related_table["target"].str.match(GENE_LABEL_FORMAT).all()
+        and unprocessed_related_table["partner"].str.match(GENE_LABEL_FORMAT).all()
+    ):
+        raise ValueError(
+            "Related dataset target or partner columns not in 'GENE_SYMBOL (entrez id)' format"
+        )
+
+    target_gene_symbol, target_entrez_id = split_gene_label(
+        unprocessed_related_table["target"]
+    )
+    partner_gene_symbol, partner_entrez_id = split_gene_label(
+        unprocessed_related_table["partner"]
+    )
+
+    return pd.DataFrame(
+        {
+            "target_gene_symbol": target_gene_symbol,
+            "target_entrez_id": target_entrez_id,
+            "partner_gene_symbol": partner_gene_symbol,
+            "partner_entrez_id": partner_entrez_id,
+        }
+    )
