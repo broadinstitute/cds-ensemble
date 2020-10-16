@@ -234,7 +234,7 @@ class EnsembleRegressor:
             raise xerror
         for df in X[1:]:
             if not all(df.index == X[0].index):
-                raise xerrorcheck_random_state
+                raise x
 
     def fit(self, X, Y, columns=None, report_freq=20):
         """
