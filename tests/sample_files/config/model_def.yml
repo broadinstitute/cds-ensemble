@@ -17,6 +17,6 @@ Related:
   - partial_table
   Required:
   - full_matrix
-  Relation:    MatchRelated
+  Relation:    related
   Exempt:
   - partial_table

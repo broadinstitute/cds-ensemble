@@ -9,12 +9,14 @@ class ModelConfig:
         name: str,
         features: List[str],
         required_features: List[str],
+        related_dataset: Optional[str],
         relation: str,
         exempt: Optional[List[str]],
     ):
         self.name = name
         self.features = features
         self.required_features = required_features
+        self.related_dataset = related_dataset
         self.relation = relation
         self.exempt = exempt
 

@@ -101,11 +101,6 @@ def test_standardize_col_name():
     )
 
 
-# TODO: check that null values work
-
-# TODO: check that confounders does not get normalized
-
-
 def test_prepare_numeric_features():
     feature_df = parse_feature_df("full_matrix.csv")
     processed_df, feature_metadata = prepare_numeric_features(
@@ -229,11 +224,12 @@ def test_subset_by_model_config():
     )
 
     model_config = ModelConfig(
-        "Unbiased",
-        ["full_matrix", "partial_matrix", "full_table", "partial_table"],
-        ["full_matrix", "confounders"],
-        "All",
-        None,
+        name="Unbiased",
+        features=["full_matrix", "partial_matrix", "full_table", "partial_table"],
+        required_features=["full_matrix", "confounders"],
+        related_dataset=None,
+        relation="All",
+        exempt=None,
     )
     all_feature_set, all_feature_metadata = subset_by_model_config(
         model_config,
@@ -245,7 +241,12 @@ def test_subset_by_model_config():
     assert all_feature_set.equals(universal_feature_set)
 
     model_config = ModelConfig(
-        "Unbiased", ["partial_matrix", "partial_table"], ["partial_table"], "All", None
+        name="Unbiased",
+        features=["partial_matrix", "partial_table"],
+        required_features=["partial_table"],
+        related_dataset=None,
+        relation="All",
+        exempt=None,
     )
     all_feature_set, all_feature_metadata = subset_by_model_config(
         model_config,

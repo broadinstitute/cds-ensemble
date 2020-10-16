@@ -65,6 +65,7 @@ def read_model_config(file_path: str) -> Dict[str, ModelConfig]:
                 name=model_name,
                 features=model_config["Features"],
                 required_features=model_config["Required"],
+                related_dataset=model_config.get("Related"),
                 relation=model_config["Relation"],
                 exempt=model_config.get("Exempt"),
             )
