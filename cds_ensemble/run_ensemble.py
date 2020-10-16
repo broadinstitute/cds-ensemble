@@ -5,7 +5,8 @@ import os
 import random
 from itertools import chain
 from time import time
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+from typing_extensions import TypedDict
 
 import pandas as pd
 import numpy as np
@@ -417,7 +418,7 @@ class RelatedFeatureForest(SelfFeatureForest):
             self.relations.target == name.split(" ")[0]
         ].tolist()
         self.related = list(set(self.related))
-        if not self.name in self.related:
+        if self.name not in self.related:
             self.related.append(self.name)
         mask = X.columns.isin(self.reserved_columns)
         for partner in self.related:
@@ -542,7 +543,16 @@ def run_model(
     else:
         constant_features = []
 
-    new_model = {"Name": model.name}
+    ModelInputs = TypedDict(
+        "ModelInputs",
+        {
+            "Name": str,
+            "ModelClass": Optional[RandomForestRegressor],
+            "kwargs": Optional[Dict[str, Any]],
+        },
+        total=False,
+    )
+    new_model: ModelInputs = {"Name": model.name}
 
     if (model.relation == "All") and (X.shape[1] <= 1000):
         new_model["ModelClass"] = PandasForest
