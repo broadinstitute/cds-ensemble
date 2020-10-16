@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from .data_models import ModelConfig, FeatureInfo
-from .parsing_utilities import read_dataframe
+from .parsing_utilities import GENE_LABEL_FORMAT, read_dataframe
 
 
 def normalize_col(col: pd.Series) -> pd.Series:
@@ -50,8 +50,16 @@ def standardize_col_name(
             "feature_id": renames.values(),
             "feature_name": renames.keys(),
             "dataset": dataset_name,
+            "gene_symbol": None,
+            "entrez_id": None,
         }
     )
+    if feature_metadata["feature_name"].str.match(GENE_LABEL_FORMAT).all():
+        split_gene_label = feature_metadata["feature_name"].str.split(
+            r" |\(|\)", expand=True
+        )
+        feature_metadata["gene_symbol"] = split_gene_label[0]
+        feature_metadata["entrez_id"] = split_gene_label[2].astype(int)
 
     df = df.rename(columns=renames)
 

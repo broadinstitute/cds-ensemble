@@ -65,10 +65,40 @@ def test_standardize_col_name():
             "feature_id": expected_df.columns,
             "feature_name": df.columns,
             "dataset": dataset_name,
+            "gene_symbol": None,
+            "entrez_id": None,
         }
     )
     assert renamed_df.equals(expected_df)
     assert feature_metadata.equals(expected_feature_metadata)
+
+    df = pd.DataFrame(
+        columns=[
+            "A1BG (1)",
+            "A1CF (29974)",
+            "A2M (2)",
+            "A2ML1 (144568)",
+            "A3GALT2 (127550)",
+        ]
+    )
+    expected_df = pd.DataFrame(
+        columns=[
+            "A1BG_(1)_a_neat_dataset",
+            "A1CF_(29974)_a_neat_dataset",
+            "A2M_(2)_a_neat_dataset",
+            "A2ML1_(144568)_a_neat_dataset",
+            "A3GALT2_(127550)_a_neat_dataset",
+        ]
+    )
+    expected_feature_metadata = pd.DataFrame(
+        {
+            "feature_id": expected_df.columns,
+            "feature_name": df.columns,
+            "dataset": dataset_name,
+            "gene_symbol": ["A1BG", "A1CF", "A2M", "A2ML1", "A3GALT2"],
+            "entrez_id": [1, 29974, 2, 144568, 127550],
+        }
+    )
 
 
 # TODO: check that null values work

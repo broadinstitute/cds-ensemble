@@ -7,6 +7,9 @@ import yaml
 from .data_models import ModelConfig, FeatureInfo
 
 
+GENE_LABEL_FORMAT = r"^\S+ \(\d+\)$"
+
+
 def read_dataframe(file_path: str, set_index: bool = True) -> pd.DataFrame:
     """Reads a file as a feather, TSV, or CSV file based on extensions
 

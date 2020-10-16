@@ -2,6 +2,8 @@ from typing import List, Optional
 
 import pandas as pd
 
+from .parsing_utilities import GENE_LABEL_FORMAT
+
 
 def prepare_targets(
     df: pd.DataFrame,
@@ -9,7 +11,7 @@ def prepare_targets(
     gene_filter: Optional[List[str]],
 ) -> pd.DataFrame:
     if gene_filter is not None:
-        if df.columns.str.match(r"^\S+ \(\d+\)$$").all():
+        if df.columns.str.match(GENE_LABEL_FORMAT).all():
             # ex: A1BG (1)
             gene_filter = [c for c in df.columns if c.split(" ")[0] in gene_filter]
             if len(gene_filter) == 0:
