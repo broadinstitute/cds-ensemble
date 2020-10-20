@@ -199,30 +199,12 @@ def test_prepare_universal_feature_set():
     )
 
 
-def test_subset_by_model_config():
-    feature_files = {
-        "full_matrix": os.path.join(TEST_DATA_DIR, "full_matrix.csv"),
-        "partial_matrix": os.path.join(TEST_DATA_DIR, "partial_matrix.csv"),
-        "full_table": os.path.join(TEST_DATA_DIR, "full_table.csv"),
-        "partial_table": os.path.join(TEST_DATA_DIR, "partial_table.csv"),
-    }
-
-    feature_infos = [
-        FeatureInfo(dataset_name, file_name)
-        for dataset_name, file_name in feature_files.items()
-    ]
-    confounders_feature_info = FeatureInfo(
-        "confounders", os.path.join(TEST_DATA_DIR, "confounders.csv"), normalize=False
-    )
-    feature_infos.append(confounders_feature_info)
-
-    target_samples = pd.read_csv(
-        os.path.join(TEST_DATA_DIR, "target_matrix.csv"), index_col=0
-    ).index
-
-    universal_feature_set, feature_metadata = prepare_universal_feature_set(
-        target_samples, feature_infos
-    )
+def test_subset_by_model_config(prepared_universal_feature_set):
+    (
+        feature_infos,
+        universal_feature_set,
+        feature_metadata,
+    ) = prepared_universal_feature_set
 
     model_config = ModelConfig(
         name="Unbiased",

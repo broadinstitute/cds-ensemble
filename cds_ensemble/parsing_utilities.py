@@ -1,3 +1,4 @@
+import re
 import os
 from typing import Dict, List, Optional, Tuple
 
@@ -95,6 +96,19 @@ def read_feature_info(file_path: str, confounders: Optional[str]) -> List[Featur
     return feature_infos
 
 
-def split_gene_label(col: pd.Series) -> Tuple[pd.Series, pd.Series]:
+def split_gene_label_str(gene_label: str) -> Tuple[str, int]:
+    """Extracts the gene symbol and entrez ID from a gene label
+
+    Args:
+        s (str): Gene label of the form GENE_SYMBOL (ENTREZ_ID)
+
+    Returns:
+        Tuple[str, int]: gene symbol, entrez ID
+    """
+    gene_label_parts = re.split(r" |\(|\)", gene_label)
+    return gene_label_parts[0], int(gene_label_parts[2])
+
+
+def split_gene_label_series(col: pd.Series) -> Tuple[pd.Series, pd.Series]:
     split_gene_label = col.str.split(r" |\(|\)", expand=True)
     return split_gene_label[0], split_gene_label[2].astype(int)

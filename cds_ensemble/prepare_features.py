@@ -4,7 +4,11 @@ import numpy as np
 import pandas as pd
 
 from .data_models import ModelConfig, FeatureInfo
-from .parsing_utilities import GENE_LABEL_FORMAT, read_dataframe, split_gene_label
+from .parsing_utilities import (
+    GENE_LABEL_FORMAT,
+    read_dataframe,
+    split_gene_label_series,
+)
 
 
 def normalize_col(col: pd.Series) -> pd.Series:
@@ -55,7 +59,9 @@ def standardize_col_name(
         }
     )
     if feature_metadata["feature_name"].str.match(GENE_LABEL_FORMAT).all():
-        gene_symbol, entrez_id = split_gene_label(feature_metadata["feature_name"])
+        gene_symbol, entrez_id = split_gene_label_series(
+            feature_metadata["feature_name"]
+        )
         feature_metadata["gene_symbol"] = gene_symbol
         feature_metadata["entrez_id"] = entrez_id
 
@@ -362,10 +368,10 @@ def format_related(
             "Related dataset target or partner columns not in 'GENE_SYMBOL (entrez id)' format"
         )
 
-    target_gene_symbol, target_entrez_id = split_gene_label(
+    target_gene_symbol, target_entrez_id = split_gene_label_series(
         unprocessed_related_table["target"]
     )
-    partner_gene_symbol, partner_entrez_id = split_gene_label(
+    partner_gene_symbol, partner_entrez_id = split_gene_label_series(
         unprocessed_related_table["partner"]
     )
 

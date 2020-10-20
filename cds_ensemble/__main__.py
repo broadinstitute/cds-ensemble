@@ -173,6 +173,8 @@ def prepare_x(
     "--task-mode", type=click.Choice(["regress", "classify"]), default="regress"
 )
 @click.option("--n-folds", type=int, default=3)
+@click.option("--related-table", type=str)
+@click.option("--feature-metadata", type=str)
 @click.option(
     "--valid-samples-file",
     type=str,
@@ -201,6 +203,8 @@ def fit_models(
     model: str,
     task_mode: str,
     n_folds: Optional[int],
+    related_table: Optional[str],
+    feature_metadata: Optional[str],
     valid_samples_file: Optional[str],
     feature_subset_file: Optional[str],
     target_range: Optional[Tuple[int, int]],
@@ -210,7 +214,12 @@ def fit_models(
     X = read_dataframe(x)
     Y = read_dataframe(y)
     selected_model_config = read_model_config(model_config)[model]
-    related_table = None
+    related_table_df = (
+        read_dataframe(related_table) if related_table is not None else None
+    )
+    feature_metadata_df = (
+        read_dataframe(feature_metadata) if feature_metadata is not None else None
+    )
 
     valid_samples = None
     if valid_samples_file is not None:
@@ -239,7 +248,8 @@ def fit_models(
         start_col,
         end_col,
         task_mode,
-        related_table,
+        related_table_df,
+        feature_metadata_df,
     )
 
     feature_file_path = (

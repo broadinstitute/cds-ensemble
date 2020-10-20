@@ -25,6 +25,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from scipy.stats import pearsonr
 
 from .data_models import ModelConfig
+from .parsing_utilities import split_gene_label_str
 
 
 def filter_run_ensemble_inputs(
@@ -313,7 +314,7 @@ class EnsembleRegressor:
             index=X[0].index,
         )
 
-    def save_results(self, feat_outfile, pred_outfile):
+    def format_results(self):
         columns = ["gene", "model"]
         for i in range(self.nfolds):
             columns.append("score%i" % i)
@@ -341,7 +342,14 @@ class EnsembleRegressor:
                         row["feature%i" % j] = np.nan
                         row["feature%i_importance" % j] = np.nan
                 melted = melted.append(row, ignore_index=True)
+        return melted
+
+    def save_results(self, feat_outfile, pred_outfile):
+        melted = self.format_results()
         melted.to_csv(feat_outfile, index=None)
+
+        # This all outputs to a single file. Should this be multiple files, or is there
+        # only one model type/predictions?
         for model, pred in zip(self.model_types, self.predictions):
             pred.to_csv(pred_outfile, index_label="Row.name")
 
@@ -403,28 +411,40 @@ class RelatedFeatureForest(SelfFeatureForest):
 
     def __init__(
         self,
-        reserved_columns=[],
-        relations=pd.DataFrame(columns=["target", "partner"]),
+        relations: pd.DataFrame,
+        feature_metadata: pd.DataFrame,
+        reserved_columns: Optional[List[str]] = None,
         **kwargs
     ):
         SelfFeatureForest.__init__(self, reserved_columns, **kwargs)
         self.relations = relations
+        self.feature_metadata = feature_metadata
 
-    def fit(self, X, y, name=None, **kwargs):
+    def fit(self, X, y, name: Optional[str] = None, **kwargs):
         if name is None:
             name = y.name
         self.name = name
-        self.related = self.relations.partner[
-            self.relations.target == name.split(" ")[0]
+
+        _, target_entrez_id = split_gene_label_str(self.name)
+        related_entrez_ids = set(
+            self.relations["partner_entrez_id"][
+                self.relations["target_entrez_id"] == target_entrez_id
+            ]
+        )
+        related_entrez_ids.add(target_entrez_id)
+
+        related_features = self.feature_metadata["feature_id"][
+            self.feature_metadata["entrez_id"].isin(related_entrez_ids)
         ].tolist()
-        self.related = list(set(self.related))
-        if self.name not in self.related:
-            self.related.append(self.name)
-        mask = X.columns.isin(self.reserved_columns)
-        for partner in self.related:
-            mask = mask | gene_feature_filter(X, partner)
-        self.feature_names = X.columns[mask]
-        features = X[self.feature_names]
+
+        columns = (
+            related_features + self.reserved_columns
+            if self.reserved_columns is not None
+            else related_features
+        )
+
+        features = X[columns]
+
         RandomForestRegressor.fit(
             self, features, y.loc[features.index].values, **kwargs
         )
@@ -489,6 +509,7 @@ def run_model(
     end_col=None,
     task="regress",
     relation_table=None,
+    feature_metadata=None,
 ) -> EnsembleRegressor:
     """Fit models for specified columns of Y using a selection of feature subsets from X.
 
@@ -572,7 +593,8 @@ def run_model(
         new_model["ModelClass"] = RelatedFeatureForest
         new_model["kwargs"] = dict(
             reserved_columns=constant_features,
-            relations=relation_table[["target", "partner"]],
+            relations=relation_table,
+            feature_metadata=feature_metadata,
             max_depth=8,
             n_estimators=100,
             min_samples_leaf=5,
@@ -630,6 +652,7 @@ def run_ensemble(
     nfolds: int,
     target_range: Tuple[int, int],
     related_table: Optional[pd.DataFrame],
+    feature_metadata: Optional[pd.DataFrame],
 ):
     return run_model(
         X,
@@ -638,6 +661,7 @@ def run_ensemble(
         nfolds=nfolds,
         task=task_mode,
         relation_table=related_table,
+        feature_metadata=feature_metadata,
         start_col=target_range[0],
         end_col=target_range[1],
     )
