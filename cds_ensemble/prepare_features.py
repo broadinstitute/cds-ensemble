@@ -228,10 +228,6 @@ def subset_by_model_config(
         Tuple[pd.DataFrame, pd.DataFrame]: Filtered combined features,
             filtered metadata
     """
-    # TODO: handle related
-    if model_config.relation != "All":
-        return None, None
-
     # All features listed in the model definitions Features or Required, and also the
     # confounders, if provided
     features_to_use = model_config.features

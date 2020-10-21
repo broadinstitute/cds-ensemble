@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from cds_ensemble.prepare_features import format_related
 from cds_ensemble.run_ensemble import filter_run_ensemble_inputs, run_model
 from cds_ensemble.parsing_utilities import read_dataframe, read_model_config
@@ -7,8 +9,96 @@ from cds_ensemble.data_models import ModelConfig, FeatureInfo
 from .conftest import TEST_DATA_DIR, TEST_CONFIG_DIR
 
 
-def test_filter_run_ensemble_inputs():
-    pass
+@pytest.mark.parametrize(
+    "valid_samples,feature_subset,target_range,targets,expected_X,expected_Y,expected_start_col,expected_end_col",
+    [
+        pytest.param(
+            None,
+            None,
+            None,
+            None,
+            lambda X: X,
+            lambda Y: Y,
+            0,
+            lambda Y: Y.shape[1],
+            id="no filtering",
+        ),
+        pytest.param(
+            ["sample-0", "sample-2", "sample-nonexistent"],
+            None,
+            None,
+            None,
+            lambda X: X.loc[["sample-0", "sample-2"]],
+            lambda Y: Y.loc[["sample-0", "sample-2"]],
+            0,
+            lambda Y: Y.shape[1],
+            id="filter valid samples",
+        ),
+        pytest.param(
+            None,
+            [
+                "target_1_(1)_full_matrix",
+                "target_2_(2)_full_matrix",
+                "nonexistent_feature",
+            ],
+            None,
+            None,
+            lambda X: X[["target_1_(1)_full_matrix", "target_2_(2)_full_matrix"]],
+            lambda Y: Y,
+            0,
+            lambda Y: Y.shape[1],
+            id="filter feature subset",
+        ),
+        pytest.param(
+            None,
+            None,
+            (1, 3),
+            None,
+            lambda X: X,
+            lambda Y: Y.iloc[:, 1:3],
+            1,
+            lambda Y: 3,
+            id="filter target range",
+        ),
+        pytest.param(
+            None,
+            None,
+            None,
+            ["target_1 (1)", "target_2 (2)", "fake_target"],
+            lambda X: X,
+            lambda Y: Y[["target_1 (1)", "target_2 (2)"]],
+            0,
+            lambda Y: Y.shape[1],
+            id="filter targets",
+        ),
+    ],
+)
+def test_filter_run_ensemble_inputs(
+    prepared_universal_feature_set,
+    valid_samples,
+    feature_subset,
+    target_range,
+    targets,
+    expected_X,
+    expected_Y,
+    expected_start_col,
+    expected_end_col,
+):
+    _, X, _ = prepared_universal_feature_set
+    Y = read_dataframe(os.path.join(TEST_DATA_DIR, "target_matrix.csv"))
+    filtered_X, filtered_Y, start_col, end_col = filter_run_ensemble_inputs(
+        X,
+        Y,
+        valid_samples=valid_samples,
+        feature_subset=feature_subset,
+        target_range=target_range,
+        targets=targets,
+    )
+
+    assert filtered_X.equals(expected_X(X))
+    assert filtered_Y.equals(expected_Y(Y))
+    assert start_col == expected_start_col
+    assert end_col == expected_end_col(Y)
 
 
 def test_run_model(prepared_universal_feature_set):

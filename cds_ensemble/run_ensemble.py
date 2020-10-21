@@ -35,16 +35,26 @@ def filter_run_ensemble_inputs(
     feature_subset: Optional[pd.Series],
     target_range: Optional[Tuple[int, int]],
     targets: Optional[List[str]],
-):
-    # TODO
-    if target_range is None:
+) -> Tuple[pd.DataFrame, pd.DataFrame, int, int]:
+    if valid_samples is not None:
+        X = X.filter(items=valid_samples, axis="index")
+        Y = Y.filter(items=valid_samples, axis="index")
+
+    if feature_subset is not None:
+        X = X.filter(items=feature_subset, axis="columns")
+
+    if target_range is None and targets is None:
         start_col = 0
         end_col = Y.shape[1]
-    else:
-        if targets is not None:
-            raise ValueError("Only one of target_range and targets can be specified")
+    elif target_range is not None and targets is None:
         start_col, end_col = target_range
-        Y = Y.filter(items=Y.columns[start_col:end_col], axis="columns")
+        Y = Y.iloc[:, start_col:end_col]
+    elif target_range is None and targets is not None:
+        start_col = 0
+        end_col = Y.shape[1]
+        Y = Y.filter(items=targets, axis="columns")
+    else:
+        raise ValueError("Only one of target_range and targets can be specified")
 
     return X, Y, start_col, end_col
 
@@ -642,26 +652,3 @@ def run_model(
     print("Finished fitting")
 
     return ensemble
-
-
-def run_ensemble(
-    X: pd.DataFrame,
-    Y: pd.DataFrame,
-    model_config: ModelConfig,
-    task_mode: str,
-    nfolds: int,
-    target_range: Tuple[int, int],
-    related_table: Optional[pd.DataFrame],
-    feature_metadata: Optional[pd.DataFrame],
-):
-    return run_model(
-        X,
-        Y,
-        model=model_config,
-        nfolds=nfolds,
-        task=task_mode,
-        relation_table=related_table,
-        feature_metadata=feature_metadata,
-        start_col=target_range[0],
-        end_col=target_range[1],
-    )

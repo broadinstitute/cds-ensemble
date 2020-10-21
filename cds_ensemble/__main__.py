@@ -183,6 +183,7 @@ def prepare_x(
 @click.option(
     "--feature-subset-file",
     type=str,
+    # TODO Format
     help="if specified, use the given file to determine which features to subset. If not specified, all features will be used",
 )
 @click.option(
@@ -240,13 +241,12 @@ def fit_models(
     except ValueError as e:
         raise click.ClickException(str(e))
 
+    # start_col, end_col not passed in because X, Y already filtered
     ensemble = run_model(
         X,
         Y,
         selected_model_config,
         n_folds,
-        start_col,
-        end_col,
         task_mode,
         related_table_df,
         feature_metadata_df,
