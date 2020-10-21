@@ -243,13 +243,13 @@ def fit_models(
 
     # start_col, end_col not passed in because X, Y already filtered
     ensemble = run_model(
-        X,
-        Y,
-        selected_model_config,
-        n_folds,
-        task_mode,
-        related_table_df,
-        feature_metadata_df,
+        X=X,
+        Y=Y,
+        model=selected_model_config,
+        nfolds=n_folds,
+        task=task_mode,
+        relation_table=related_table_df,
+        feature_metadata=feature_metadata_df,
     )
 
     feature_file_path = (
