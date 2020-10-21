@@ -442,7 +442,7 @@ class RelatedFeatureForest(SelfFeatureForest):
             if self.reserved_columns is not None
             else related_features
         )
-
+        self.feature_names = columns
         features = X[columns]
 
         RandomForestRegressor.fit(

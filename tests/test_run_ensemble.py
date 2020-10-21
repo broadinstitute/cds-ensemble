@@ -32,6 +32,7 @@ def test_run_model(prepared_universal_feature_set):
     df = ensemble.format_results()
     assert df.notnull().all(axis=None)
 
+    # Test related features
     model_config = ModelConfig(
         name="Related",
         features=["full_matrix", "partial_matrix", "full_table", "partial_table"],
@@ -54,4 +55,43 @@ def test_run_model(prepared_universal_feature_set):
         feature_metadata=feature_metadata,
     )
     df = ensemble.format_results()
-    assert df.notnull().all(axis=None)
+
+    # There are only 4 features used, and one target has no related features
+    assert (
+        df.iloc[:4][
+            [
+                "gene",
+                "model",
+                "score0",
+                "score1",
+                "score2",
+                "best",
+                "feature0",
+                "feature0_importance",
+                "feature1",
+                "feature1_importance",
+                "feature2",
+                "feature2_importance",
+                "feature3",
+                "feature3_importance",
+            ]
+        ]
+        .notnull()
+        .all(axis=None)
+    )
+    assert (
+        df.iloc[4][
+            [
+                "gene",
+                "model",
+                "score0",
+                "score1",
+                "score2",
+                "best",
+                "feature0",
+                "feature0_importance",
+            ]
+        ]
+        .notnull()
+        .all()
+    )
