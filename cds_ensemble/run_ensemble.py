@@ -231,7 +231,6 @@ class EnsembleRegressor:
         self.nfolds = nfolds
         self.splitter = Splitter(n_splits=nfolds, shuffle=True)
         self.scoring = scoring
-        self.columns = None
         self.rounding = rounding
         self.predictions = None
 
@@ -248,7 +247,7 @@ class EnsembleRegressor:
             if not all(df.index == X[0].index):
                 raise xerror
 
-    def fit(self, X, Y, columns=None, report_freq=20):
+    def fit(self, X, Y, report_freq=20):
         """
         X: [{ModelClass: dataframe}
         Y: dataframe
@@ -259,9 +258,7 @@ class EnsembleRegressor:
             raise ValueError(
                 "Y must be a dataframe with index matching the indices in X"
             )
-        if columns is None:
-            columns = Y.columns
-        self.columns = Y.columns
+        columns = Y.columns
         n = len(self.model_types)
         outputs = {
             "models": {},
@@ -511,12 +508,10 @@ class PandasForest(RandomForestRegressor):
 
 
 def run_model(
-    X,
-    Y,
+    X: pd.DataFrame,
+    Y: pd.DataFrame,
     model: ModelConfig,
-    nfolds,
-    start_col=0,
-    end_col=None,
+    nfolds: int,
     task="regress",
     relation_table=None,
     feature_metadata=None,
@@ -557,9 +552,6 @@ def run_model(
         ValueError: If `param2` is equal to `param1`.
 
     """
-
-    if end_col is None:
-        end_col = Y.shape[1]
     print("aligning features")
     shared_lines = list(set(X.index) & set(Y.index))
     assert len(shared_lines) > 0, "no shared lines found: \n\n features %r\n\n "
@@ -647,8 +639,7 @@ def run_model(
     else:
         raise ValueError('task must be "classify" or "regress"')
 
-    columns = Y.columns[start_col:end_col]
-    ensemble.fit(Xtrain, Y, columns)
+    ensemble.fit(X=Xtrain, Y=Y)
     print("Finished fitting")
 
     return ensemble
