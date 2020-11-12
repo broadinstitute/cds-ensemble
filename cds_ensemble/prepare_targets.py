@@ -2,7 +2,11 @@ from typing import List, Optional
 
 import pandas as pd
 
-from .parsing_utilities import GENE_LABEL_FORMAT, split_gene_label_str
+from .parsing_utilities import (
+    GENE_LABEL_FORMAT,
+    split_gene_label_str,
+    split_gene_label_series,
+)
 
 
 def prepare_targets(
@@ -11,14 +15,14 @@ def prepare_targets(
     gene_filter: Optional[List[str]],
 ) -> pd.DataFrame:
     if gene_filter is not None:
-        if df.columns.str.match(GENE_LABEL_FORMAT).all():
-            # ex: A1BG (1)
-            gene_filter = [
-                c for c in df.columns if split_gene_label_str(c)[0] in gene_filter
-            ]
-            if len(gene_filter) == 0:
-                raise ValueError("No matching genes found")
-        df = df.filter(items=gene_filter, axis="columns")
+        gene_symbol, _ = split_gene_label_series(df.columns)
+        columns = pd.DataFrame({"column_name": df.columns, "gene_symbol": gene_symbol})
+        filtered_columns = columns[columns["gene_symbol"].isin(gene_filter)][
+            "column_name"
+        ]
+        if len(filtered_columns) == 0:
+            raise ValueError("No matching genes found")
+        df = df.filter(items=filtered_columns, axis="columns")
 
     if top_variance_filter is not None:
         df = df.filter(

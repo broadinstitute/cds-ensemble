@@ -54,16 +54,11 @@ def standardize_col_name(
             "feature_id": renames.values(),
             "feature_name": renames.keys(),
             "dataset": dataset_name,
-            "gene_symbol": None,
-            "entrez_id": None,
         }
     )
-    if feature_metadata["feature_name"].str.match(GENE_LABEL_FORMAT).all():
-        gene_symbol, entrez_id = split_gene_label_series(
-            feature_metadata["feature_name"]
-        )
-        feature_metadata["gene_symbol"] = gene_symbol
-        feature_metadata["entrez_id"] = entrez_id
+    gene_symbol, entrez_id = split_gene_label_series(feature_metadata["feature_name"])
+    feature_metadata["gene_symbol"] = gene_symbol
+    feature_metadata["entrez_id"] = entrez_id
 
     df = df.rename(columns=renames)
 
@@ -352,9 +347,6 @@ def format_related(
     unprocessed_related_table = read_dataframe(
         related_feature_info.file_name, set_index=False
     )
-    missing_columns = {"target", "partner"} - set(unprocessed_related_table.columns)
-    if len(missing_columns) > 0:
-        raise ValueError(f"Related dataset is missing columns: {missing_columns}")
 
     if not (
         unprocessed_related_table["target"].str.match(GENE_LABEL_FORMAT).all()

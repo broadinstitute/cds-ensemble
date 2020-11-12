@@ -5,7 +5,11 @@ import pytest
 from cds_ensemble.prepare_targets import prepare_targets
 
 TARGETS = pd.DataFrame(
-    {"SOX10": [0, 0.5, 0.5], "NRAS": [0.6, 0.6, 0.7], "BRAF": [0.3, 0.4, 0.4]},
+    {
+        "SOX10 (6663)": [0, 0.5, 0.5],
+        "NRAS (4893)": [0.6, 0.6, 0.7],
+        "BRAF (673)": [0.3, 0.4, 0.4],
+    },
     index=["sample-1", "sample-2", "sample-3"],
 )
 
@@ -18,14 +22,16 @@ TARGETS = pd.DataFrame(
             1,
             None,
             pd.DataFrame(
-                {"SOX10": [0, 0.5, 0.5]}, index=["sample-1", "sample-2", "sample-3"]
+                {"SOX10 (6663)": [0, 0.5, 0.5]},
+                index=["sample-1", "sample-2", "sample-3"],
             ),
         ),
         pytest.param(
             None,
             ["NRAS"],
             pd.DataFrame(
-                {"NRAS": [0.6, 0.6, 0.7]}, index=["sample-1", "sample-2", "sample-3"]
+                {"NRAS (4893)": [0.6, 0.6, 0.7]},
+                index=["sample-1", "sample-2", "sample-3"],
             ),
         ),
     ],

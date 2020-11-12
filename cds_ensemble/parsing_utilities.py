@@ -8,7 +8,8 @@ import yaml
 from .data_models import ModelConfig, FeatureInfo
 
 
-GENE_LABEL_FORMAT = r"^\S+ \(\d+\)$"
+GENE_LABEL_FORMAT = r"^[A-Z\d\-]+ \(\d+\)$"
+GENE_LABEL_FORMAT_GROUPS = r"^([A-Z\d\-]+) \((\d+)\)$"
 
 
 def read_dataframe(file_path: str, set_index: bool = True) -> pd.DataFrame:
@@ -105,10 +106,16 @@ def split_gene_label_str(gene_label: str) -> Tuple[str, int]:
     Returns:
         Tuple[str, int]: gene symbol, entrez ID
     """
-    gene_label_parts = re.split(r" |\(|\)", gene_label)
-    return gene_label_parts[0], int(gene_label_parts[2])
+    match = re.match(GENE_LABEL_FORMAT_GROUPS, gene_label)
+    if match is None:
+        return None, None
+    symbol, entrez_id = match.groups()
+    return symbol, int(entrez_id)
 
 
 def split_gene_label_series(col: pd.Series) -> Tuple[pd.Series, pd.Series]:
-    split_gene_label = col.str.split(r" |\(|\)", expand=True)
-    return split_gene_label[0], split_gene_label[2].astype(int)
+    split_gene_label = col.str.extract(GENE_LABEL_FORMAT_GROUPS)
+    return (
+        split_gene_label[0],
+        pd.to_numeric(split_gene_label[1], errors="coerce").astype("Int64"),
+    )

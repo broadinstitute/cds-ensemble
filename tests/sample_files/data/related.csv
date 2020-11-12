@@ -1,5 +1,5 @@
 target,partner
-target_0 (0),target_1 (1)
-target_1 (1),target_0 (0)
-target_2 (2),target_3 (3)
-target_3 (3),target_2 (2)
+TARGET-0 (0),TARGET-1 (1)
+TARGET-1 (1),TARGET-0 (0)
+TARGET-2 (2),TARGET-3 (3)
+TARGET-3 (3),TARGET-2 (2)

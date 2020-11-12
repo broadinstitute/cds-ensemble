@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from pandas.testing import assert_frame_equal
+
 from cds_ensemble.prepare_features import (
     normalize_col,
     standardize_col_name,
@@ -70,8 +72,9 @@ def test_standardize_col_name():
             "entrez_id": None,
         }
     )
-    assert renamed_df.equals(expected_df)
-    assert feature_metadata.equals(expected_feature_metadata)
+    assert_frame_equal(renamed_df, expected_df)
+    # NaN vs None
+    assert_frame_equal(feature_metadata, expected_feature_metadata, check_dtype=False)
 
     df = pd.DataFrame(
         columns=[
@@ -262,10 +265,10 @@ def test_format_related():
     )
     expected = pd.DataFrame(
         {
-            "target_gene_symbol": ["target_0", "target_1", "target_2", "target_3"],
+            "target_gene_symbol": ["TARGET-0", "TARGET-1", "TARGET-2", "TARGET-3"],
             "target_entrez_id": [0, 1, 2, 3],
-            "partner_gene_symbol": ["target_1", "target_0", "target_3", "target_2"],
+            "partner_gene_symbol": ["TARGET-1", "TARGET-0", "TARGET-3", "TARGET-2"],
             "partner_entrez_id": [1, 0, 3, 2],
         }
     )
-    assert related_table.equals(expected)
+    assert_frame_equal(related_table, expected, check_dtype=False)
