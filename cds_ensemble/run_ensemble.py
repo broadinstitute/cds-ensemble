@@ -26,6 +26,7 @@ from scipy.stats import pearsonr
 
 from .data_models import ModelConfig
 from .parsing_utilities import split_gene_label_str
+from .exceptions import MalformedGeneLabelException
 
 
 def filter_run_ensemble_inputs(
@@ -166,12 +167,16 @@ def single_fit(
         else:
             splits = splitter.split(y, y)
         score = []
-        n = 0
+        malformed_gene_labels = []
         model_prediction = pd.Series(np.nan, index=Y.index, name=column)
         for train, test in splits:
             try:
                 model.fit(x.iloc[train], y.iloc[train])
                 ypred = model.predict(x.iloc[test])
+            except MalformedGeneLabelException as e:
+                print(e)
+                malformed_gene_labels.append(e.gene_label)
+                continue
             except Exception as e:
                 print("error fitting model %r for column %s" % (model, column))
                 print("train indices:\n %r\n" % train)
@@ -183,7 +188,7 @@ def single_fit(
                 raise e
             model_prediction.iloc[test] = ypred[:]
             score.append(scoring(y.iloc[test], ypred))
-            n += 1
+
         scores.append(score)
         prediction.append(model_prediction)
         model.fit(x, y)

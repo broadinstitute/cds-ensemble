@@ -6,7 +6,7 @@ import pandas as pd
 import yaml
 
 from .data_models import ModelConfig, FeatureInfo
-
+from .exceptions import MalformedGeneLabelException
 
 GENE_LABEL_FORMAT = r"^[A-Z\d\-]+ \(\d+\)$"
 GENE_LABEL_FORMAT_GROUPS = r"^([A-Z\d\-]+) \((\d+)\)$"
@@ -108,7 +108,7 @@ def split_gene_label_str(gene_label: str) -> Tuple[str, int]:
     """
     match = re.match(GENE_LABEL_FORMAT_GROUPS, gene_label)
     if match is None:
-        return None, None
+        raise MalformedGeneLabelException(gene_label)
     symbol, entrez_id = match.groups()
     return symbol, int(entrez_id)
 

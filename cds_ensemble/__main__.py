@@ -129,7 +129,7 @@ def prepare_x(
             if output_format == ".csv":
                 related_table.to_csv(f"{output_related}.csv")
             else:
-                related_table.reset_index.to_feather(f"{output_related}.ftr")
+                related_table.reset_index().to_feather(f"{output_related}.ftr")
     except ValueError as e:
         raise click.ClickException(str(e))
 
@@ -212,9 +212,14 @@ def fit_models(
     targets: Optional[str],
     output_dir: Optional[str],
 ):
+    selected_model_config = read_model_config(model_config)[model]
+    if selected_model_config.relation == "MatchRelated" and related_table is None:
+        raise click.ClickException(
+            "The model selected uses the MatchRelated relation, but no related table was provided."
+        )
     X = read_dataframe(x)
     Y = read_dataframe(y)
-    selected_model_config = read_model_config(model_config)[model]
+
     related_table_df = (
         read_dataframe(related_table) if related_table is not None else None
     )

@@ -348,14 +348,6 @@ def format_related(
         related_feature_info.file_name, set_index=False
     )
 
-    if not (
-        unprocessed_related_table["target"].str.match(GENE_LABEL_FORMAT).all()
-        and unprocessed_related_table["partner"].str.match(GENE_LABEL_FORMAT).all()
-    ):
-        raise ValueError(
-            "Related dataset target or partner columns not in 'GENE_SYMBOL (entrez id)' format"
-        )
-
     target_gene_symbol, target_entrez_id = split_gene_label_series(
         unprocessed_related_table["target"]
     )
@@ -363,7 +355,7 @@ def format_related(
         unprocessed_related_table["partner"]
     )
 
-    return pd.DataFrame(
+    related = pd.DataFrame(
         {
             "target_gene_symbol": target_gene_symbol,
             "target_entrez_id": target_entrez_id,
@@ -371,3 +363,10 @@ def format_related(
             "partner_entrez_id": partner_entrez_id,
         }
     )
+
+    related = related.dropna(axis="index", how="any")
+    if related.shape[0] == 0:
+        raise ValueError(
+            "Related table has 'target' or 'partner' column not in GENE_SYMBOL (ENTREZ_ID) format."
+        )
+    return related
