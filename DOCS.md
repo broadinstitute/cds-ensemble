@@ -28,9 +28,9 @@ Prepares the targets to be consumed by `fit-models`. Concretely, filters if one 
 
 ### Examples
 ```shell
-cds-ensemble prepare-y --input targets.csv --output prepared_targets.ftr
-cds-ensemble prepare-y --input targets.tsv --output prepared_targets.ftr --top-variance-filter 10
-cds-ensemble prepare-y --input targets.ftr --output prepared_targets.ftr --gene-filter SOX10,NRAS,BRAF
+cds-ensemble prepare-y --input targets.csv --output prepared_targets
+cds-ensemble prepare-y --input targets.tsv --output prepared_targets --top-variance-filter 10
+cds-ensemble prepare-y --input targets.ftr --output prepared_targets --gene-filter SOX10,NRAS,BRAF
 ```
 
 [Top](#cds-ensemble-documentation)
@@ -60,8 +60,7 @@ Prepares the features to be consumed by `fit-models`
                                filename columns
 
 - `--output` \
-  Full path to where to write the merged matrix
-
+  File name (without extension) for where to write the merged matrix
 
 - `--confounders` (optional) \
   Table with target dataset specific QC, e.g. NNMD
@@ -75,7 +74,7 @@ Prepares the features to be consumed by `fit-models`
 
 ### Examples
 ```shell
-
+cds-ensemble prepare-x --model-config model-config.yaml --output x_output --targets prepared_targets.ftr --feature-info feature-info.csv --output-related related
 ```
 
 [Top](#cds-ensemble-documentation)
