@@ -49,7 +49,7 @@ def test_prepare_x(tmpdir, feature_info_file):
     assert result.exit_code == 0
 
     targets = pd.read_csv(targets_path, index_col=0)
-    df = pd.read_csv(output_path + "-Unbiased.csv", index_col=0)
+    df = pd.read_csv(output_path + ".csv", index_col=0)
     assert targets.index.size == df.index.size
 
 
@@ -83,7 +83,7 @@ def test_fit_models(tmpdir, feature_info_file):
         [
             "fit-models",
             "--x",
-            output_path + "-Unbiased.csv",
+            output_path + ".csv",
             "--y",
             targets_path,
             "--model-config",

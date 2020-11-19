@@ -1,5 +1,6 @@
 import os
 
+import pandas as pd
 import pytest
 
 from cds_ensemble.prepare_features import format_related
@@ -84,11 +85,25 @@ def test_filter_run_ensemble_inputs(
     expected_start_col,
     expected_end_col,
 ):
-    _, X, _ = prepared_universal_feature_set
+    (_, X, feature_metadata) = prepared_universal_feature_set
+
+    model_config = ModelConfig(
+        name="Unbiased",
+        features=["full_matrix", "partial_matrix", "full_table", "partial_table"],
+        required_features=["full_matrix", "confounders"],
+        related_dataset=None,
+        relation="All",
+        exempt=None,
+    )
     Y = read_dataframe(os.path.join(TEST_DATA_DIR, "target_matrix.csv"))
+    # TODO
+    model_valid_samples = pd.DataFrame({"Unbiased": True}, index=X.index)
     filtered_X, filtered_Y, start_col, end_col = filter_run_ensemble_inputs(
         X,
         Y,
+        model_config=model_config,
+        feature_metadata=feature_metadata,
+        model_valid_samples=model_valid_samples,
         valid_samples=valid_samples,
         feature_subset=feature_subset,
         target_range=target_range,

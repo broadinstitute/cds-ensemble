@@ -13,7 +13,7 @@ from cds_ensemble.prepare_features import (
     prepare_categorical_features,
     prepare_single_dataset_features,
     prepare_universal_feature_set,
-    subset_by_model_config,
+    get_valid_samples_for_model,
     format_related,
 )
 from cds_ensemble.data_models import ModelConfig, FeatureInfo
@@ -202,7 +202,7 @@ def test_prepare_universal_feature_set():
     )
 
 
-def test_subset_by_model_config(prepared_universal_feature_set):
+def test_get_valid_samples_for_model(prepared_universal_feature_set):
     (
         feature_infos,
         universal_feature_set,
@@ -217,14 +217,10 @@ def test_subset_by_model_config(prepared_universal_feature_set):
         relation="All",
         exempt=None,
     )
-    all_feature_set, all_feature_metadata = subset_by_model_config(
-        model_config,
-        feature_infos,
-        "confounders",
-        universal_feature_set,
-        feature_metadata,
+    valid_samples = get_valid_samples_for_model(
+        model_config, feature_infos, universal_feature_set
     )
-    assert all_feature_set.equals(universal_feature_set)
+    assert np.sum(valid_samples) == universal_feature_set.index.size
 
     model_config = ModelConfig(
         name="Unbiased",
@@ -234,14 +230,10 @@ def test_subset_by_model_config(prepared_universal_feature_set):
         relation="All",
         exempt=None,
     )
-    all_feature_set, all_feature_metadata = subset_by_model_config(
-        model_config,
-        feature_infos,
-        "confounders",
-        universal_feature_set,
-        feature_metadata,
+    valid_samples = get_valid_samples_for_model(
+        model_config, feature_infos, universal_feature_set
     )
-    assert all_feature_set.index.size < universal_feature_set.index.size
+    assert np.sum(valid_samples) < universal_feature_set.index.size
 
 
 def test_format_related():

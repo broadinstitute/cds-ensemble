@@ -32,11 +32,24 @@ from .exceptions import MalformedGeneLabelException
 def filter_run_ensemble_inputs(
     X: pd.DataFrame,
     Y: pd.DataFrame,
+    model_config: ModelConfig,
+    feature_metadata: pd.DataFrame,
+    model_valid_samples: pd.DataFrame,
     valid_samples: Optional[pd.Series],
     feature_subset: Optional[pd.Series],
     target_range: Optional[Tuple[int, int]],
     targets: Optional[List[str]],
 ) -> Tuple[pd.DataFrame, pd.DataFrame, int, int]:
+    datasets = model_config.features + model_config.required_features
+    features = feature_metadata[feature_metadata["dataset"].isin(datasets)][
+        "feature_id"
+    ]
+    X = X.filter(items=features, axis="columns")
+
+    samples = model_valid_samples[model_valid_samples[model_config.name]].index
+    X = X.filter(items=samples, axis="index")
+    Y = Y.filter(items=samples, axis="index")
+
     if valid_samples is not None:
         X = X.filter(items=valid_samples, axis="index")
         Y = Y.filter(items=valid_samples, axis="index")

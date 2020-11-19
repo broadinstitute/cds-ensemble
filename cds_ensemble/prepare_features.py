@@ -200,46 +200,23 @@ def prepare_universal_feature_set(
     return combined_features, feature_metadata
 
 
-def subset_by_model_config(
+def get_valid_samples_for_model(
     model_config: ModelConfig,
     feature_infos: List[FeatureInfo],
-    confounders: Optional[str],
     combined_features: pd.DataFrame,
-    feature_metadata: pd.DataFrame,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Subsets the combined features to only the features listed in the model
-    definition, and also filters samples to those found in the required features
-    datasets.
+    """Filters samples to those found in the required features datasets.
 
     Args:
         model_config (ModelConfig): The model definition
         feature_infos (List[FeatureInfo]): FeatureInfos with processed data, used to
             filter required samples
-        confounders (Optional[str]): Confounders dataset to include, if provided
         combined_features (pd.DataFrame): DataFrame of all processed features
-        feature_metadata (pd.DataFrame): Corresponding metadata
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]: Filtered combined features,
             filtered metadata
     """
-    # All features listed in the model definitions Features or Required, and also the
-    # confounders, if provided
-    features_to_use = model_config.features
-    for feature in model_config.required_features:
-        if feature not in features_to_use:
-            features_to_use.append(feature)
-    if confounders is not None and confounders not in features_to_use:
-        features_to_use.append(confounders)
-
-    # Filter metadata by datasets used and filter matching columns in combined_features
-    model_feature_metadata = feature_metadata[
-        feature_metadata["dataset"].isin(features_to_use)
-    ]
-    model_features = combined_features.filter(
-        items=model_feature_metadata["feature_id"], axis="columns"
-    )
-
     # For features that are listed as required, filter out samples that are not in the
     # required dataset's samples
     model_required_samples: Optional[pd.Index] = None
@@ -254,11 +231,9 @@ def subset_by_model_config(
                 feature_info.data.index
             )
     if model_required_samples is not None:
-        model_features = model_features.filter(
-            items=model_required_samples, axis="index"
-        )
+        return combined_features.index.isin(model_required_samples)
 
-    return model_features, model_feature_metadata
+    return combined_features.index.isin(combined_features.index)
 
 
 def prepare_features(
@@ -266,7 +241,7 @@ def prepare_features(
     target_samples: pd.Series,
     feature_infos: List[FeatureInfo],
     confounders: Optional[str],
-) -> List[Tuple[str, pd.DataFrame, pd.DataFrame]]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Processes and merges features for each of the models in `model_configs`
 
     Args:
@@ -278,9 +253,9 @@ def prepare_features(
         confounders (Optional[str]): Name of confounders
 
     Returns:
-        List[Tuple[str, pd.DataFrame, pd.DataFrame]]: List of (Processed and combined
-            features, mapping of original dataset/columns to processed columns) for all
-            models defined
+        [Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]]: (Processed and combined
+            features, mapping of original dataset/columns to processed columns, valid
+            samples for each model)
     """
     features_in_any_model: Set[str] = set()
     for _, model_config in model_configs.items():
@@ -299,22 +274,19 @@ def prepare_features(
         target_samples, subsetted_feature_infos
     )
 
-    models_features_and_metadata: List[Tuple[str, pd.DataFrame, pd.DataFrame]] = []
-
     for _, model_config in model_configs.items():
-        model_features, model_feature_metadata = subset_by_model_config(
-            model_config,
-            feature_infos,
-            confounders,
-            combined_features,
-            feature_metadata,
-        )
-        if model_features is not None:
-            models_features_and_metadata.append(
-                (model_config.name, model_features, model_feature_metadata)
+        valid_samples_for_models = {
+            model_config.name: get_valid_samples_for_model(
+                model_config, feature_infos, combined_features
             )
+            for _, model_config in model_configs.items()
+        }
 
-    return models_features_and_metadata
+        model_valid_samples = pd.DataFrame(
+            data=valid_samples_for_models, index=combined_features.index
+        )
+
+    return combined_features, feature_metadata, model_valid_samples
 
 
 def format_related(

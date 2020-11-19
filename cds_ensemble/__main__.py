@@ -125,28 +125,28 @@ def prepare_x(
 
     try:
         if output_related:
+            file_prefix, _ = os.path.splitext(output_related)
             related_table = format_related(model_configs, feature_infos)
             if output_format == ".csv":
-                related_table.to_csv(f"{output_related}.csv")
+                related_table.to_csv(f"{file_prefix}.csv", index=False)
             else:
-                related_table.reset_index().to_feather(f"{output_related}.ftr")
+                related_table.to_feather(f"{file_prefix}.ftr")
     except ValueError as e:
         raise click.ClickException(str(e))
 
-    models_features_and_metadata = prepare_features(
+    combined_features, feature_metadata, model_valid_samples = prepare_features(
         model_configs, target_samples, feature_infos, confounders
     )
 
-    for (model_name, features, feature_metadata) in models_features_and_metadata:
-        if output_format == ".csv":
-            features.to_csv(f"{output}-{model_name}.csv")
-            feature_metadata.to_csv(f"{output}-{model_name}_feature_metadata.csv")
-        else:
-            features.reset_index().to_feather(f"{output}-{model_name}.ftr")
-
-            feature_metadata.reset_index().to_feather(
-                f"{output}-{model_name}_feature_metadata.ftr"
-            )
+    file_prefix, _ = os.path.splitext(output)
+    if output_format == ".csv":
+        combined_features.to_csv(f"{file_prefix}.csv")
+        feature_metadata.to_csv(f"{file_prefix}_feature_metadata.csv", index=False)
+        model_valid_samples.to_csv(f"{file_prefix}_valid_samples.csv")
+    else:
+        combined_features.reset_index().to_feather(f"{file_prefix}.ftr")
+        feature_metadata.to_feather(f"{file_prefix}_feature_metadata.ftr")
+        model_valid_samples.reset_index().to_feather(f"{file_prefix}_valid_samples.ftr")
 
 
 @main.command()
@@ -174,7 +174,16 @@ def prepare_x(
 )
 @click.option("--n-folds", type=int, default=3)
 @click.option("--related-table", type=str)
-@click.option("--feature-metadata", type=str)
+@click.option(
+    "--feature-metadata",
+    type=str,
+    help="The feature metadata outputted by prepare-x. If not specified, will try to use the file that matches the '--x' parameter",
+)
+@click.option(
+    "--model-valid-samples",
+    type=str,
+    help="The valid samples per model outputted by prepare-x. If not specified, will try to use the file that matches the '--x' parameter",
+)
 @click.option(
     "--valid-samples-file",
     type=str,
@@ -206,6 +215,7 @@ def fit_models(
     n_folds: Optional[int],
     related_table: Optional[str],
     feature_metadata: Optional[str],
+    model_valid_samples: Optional[str],
     valid_samples_file: Optional[str],
     feature_subset_file: Optional[str],
     target_range: Optional[Tuple[int, int]],
@@ -217,15 +227,46 @@ def fit_models(
         raise click.ClickException(
             "The model selected uses the MatchRelated relation, but no related table was provided."
         )
+    file_prefix, ext = os.path.splitext(x)
     X = read_dataframe(x)
     Y = read_dataframe(y)
 
     related_table_df = (
         read_dataframe(related_table) if related_table is not None else None
     )
-    feature_metadata_df = (
-        read_dataframe(feature_metadata) if feature_metadata is not None else None
-    )
+    try:
+        feature_metadata_path = (
+            feature_metadata
+            if feature_metadata is not None
+            else f"{file_prefix}_feature_metadata{ext}"
+        )
+        feature_metadata_df = read_dataframe(feature_metadata_path, set_index=False)
+    except FileNotFoundError as e:
+        raise click.ClickException(
+            f"Expected file '{e.filename}' outputted by prepare-x command"
+        )
+
+    try:
+        model_valid_samples_path = (
+            model_valid_samples
+            if model_valid_samples is not None
+            else f"{file_prefix}_valid_samples{ext}"
+        )
+        model_valid_samples_df = read_dataframe(model_valid_samples_path)
+
+        if not model_valid_samples_df.index.equals(X.index):
+            raise ValueError("Model valid samples's index does not match X's index.")
+
+        if selected_model_config.name not in model_valid_samples_df.columns:
+            raise ValueError(
+                f"Model valid samples does not have entry for model {selected_model_config.name}."
+            )
+    except ValueError as e:
+        raise click.ClickException(str(e))
+    except FileNotFoundError as e:
+        raise click.ClickException(
+            f"Expected file '{e.filename}' outputted by prepare-x command"
+        )
 
     valid_samples = None
     if valid_samples_file is not None:
@@ -241,7 +282,15 @@ def fit_models(
 
     try:
         X, Y, start_col, end_col = filter_run_ensemble_inputs(
-            X, Y, valid_samples, feature_subset, target_range, target_list
+            X,
+            Y,
+            selected_model_config,
+            feature_metadata_df,
+            model_valid_samples_df,
+            valid_samples,
+            feature_subset,
+            target_range,
+            target_list,
         )
     except ValueError as e:
         raise click.ClickException(str(e))
