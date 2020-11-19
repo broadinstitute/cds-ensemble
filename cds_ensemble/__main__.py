@@ -130,7 +130,7 @@ def prepare_x(
             if output_format == ".csv":
                 related_table.to_csv(f"{file_prefix}.csv", index=False)
             else:
-                related_table.to_feather(f"{file_prefix}.ftr")
+                related_table.reset_index(drop=True).to_feather(f"{file_prefix}.ftr")
     except ValueError as e:
         raise click.ClickException(str(e))
 
@@ -145,7 +145,9 @@ def prepare_x(
         model_valid_samples.to_csv(f"{file_prefix}_valid_samples.csv")
     else:
         combined_features.reset_index().to_feather(f"{file_prefix}.ftr")
-        feature_metadata.to_feather(f"{file_prefix}_feature_metadata.ftr")
+        feature_metadata.reset_index(drop=True).to_feather(
+            f"{file_prefix}_feature_metadata.ftr"
+        )
         model_valid_samples.reset_index().to_feather(f"{file_prefix}_valid_samples.ftr")
 
 
