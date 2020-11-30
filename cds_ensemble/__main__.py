@@ -208,7 +208,7 @@ def prepare_x(
     "--targets", type=str, help="if specified, fit models for targets with these labels"
 )
 @click.option("--output-dir", type=str)
-def fit_models(
+def fit_model(
     x: str,
     y: str,
     model_config: str,

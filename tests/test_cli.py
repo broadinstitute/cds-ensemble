@@ -53,7 +53,7 @@ def test_prepare_x(tmpdir, feature_info_file):
     assert targets.index.size == df.index.size
 
 
-def test_fit_models(tmpdir, feature_info_file):
+def test_fit_model(tmpdir, feature_info_file):
     runner = CliRunner()
 
     targets_path = os.path.join(TEST_DATA_DIR, "target_matrix.csv")
@@ -81,7 +81,7 @@ def test_fit_models(tmpdir, feature_info_file):
     result = runner.invoke(
         main,
         [
-            "fit-models",
+            "fit-model",
             "--x",
             output_path + ".csv",
             "--y",

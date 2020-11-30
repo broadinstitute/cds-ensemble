@@ -14,7 +14,7 @@ cds-ensemble prepare-y \
 --gene-filter [LIST_OF_GENES]
 ```
 
-Prepares the targets to be consumed by `fit-models`. Concretely, filters if one is specified and outputs a feather file. Only one filter may be applied.
+Prepares the targets to be consumed by `fit-model`. Concretely, filters if one is specified and outputs a feather file. Only one filter may be applied.
 
 ### Options
 - `--input` \
@@ -47,7 +47,7 @@ cds-ensemble prepare-x \
 --output-related [RELATED_OUTPUT_FILE_PATH]
 ```
 
-Prepares the features to be consumed by `fit-models`
+Prepares the features to be consumed by `fit-model`. Outputs file in the format `[OUTPUT_FILE_PATH].[OUTPUT_FORMAT]`, and also outputs a feature metadata file with path `[OUTPUT_FILE_PATH]_feature_metadata.[OUTPUT_FORMAT]` and valid samples per model file with path `[OUTPUT_FILE_PATH]_valid_samples.[OUTPUT_FORMAT]`. `fit-models` assumes those files exist.
 
 ### Parameters
 - `--targets` \
@@ -56,8 +56,8 @@ Prepares the features to be consumed by `fit-models`
 - `--model-config` \
   The file with model configurations (need to define format of this below) TODO
 
-- `--feature-info` \          Table containing feature datasets required and
-                               filename columns
+- `--feature-info` \
+  Table containing feature datasets required and filename columns
 
 - `--output` \
   File name (without extension) for where to write the merged matrix
@@ -75,6 +75,73 @@ Prepares the features to be consumed by `fit-models`
 ### Examples
 ```shell
 cds-ensemble prepare-x --model-config model-config.yaml --output x_output --targets prepared_targets.ftr --feature-info feature-info.csv --output-related related
+```
+
+[Top](#cds-ensemble-documentation)
+
+
+## fit-model
+```shell
+cds-ensemble fit-model \
+--x [PREPARED_FEATURES_FILE_PATH] \
+--y [PREPARED_TARGETS_FILE_PATH] \
+--model-config [MODEL_CONFIG_FILE_PATH] \
+--model [MODEL_NAME] \
+--target-range [START_INDEX] [END_INDEX] \
+--related-table [RELATED_FEATURES_FILE_PATH]
+```
+
+Prepares the features to be consumed by `fit-model`
+
+### Parameters
+- `--x` \
+  Matrix of prepared features (output of `prepare-x`)
+
+- `--targets` \
+  Matrix of the targets we are modeling
+
+- `--model-config` \
+  The file with model configurations (need to define format of this below) TODO
+
+- `--model` \
+  Name of model to fit (as defined in the model configurations)
+
+- `task-mode` (optional | default: regress) \
+  TODO
+
+- `n-folds` (optional | default: 3) \
+  TODO
+
+- `related-table` (optional\*) \
+  TODO
+  \*required if model has `Relation: MatchRelated`
+
+
+- `feature-metadata` (optional) \
+  TODO
+
+- `model-valid-samples` (optional) \
+  TODO
+
+- `valid-samples-file` (optional) \
+  TODO
+
+- `feature-subset-file` (optional) \
+  TODO
+
+- `target-range` (optional) \
+  TODO
+
+- `targets` (optional) \
+  TODO
+
+- `output-dir` (optional) \
+  TODO
+
+
+### Examples
+```shell
+cds-ensemble fit-model --x prepared_features.ftr --y prepared_targets.ftr --model-config model-config.yaml --model MatchRelated --target-range 0 10 --related-table related.ftr
 ```
 
 [Top](#cds-ensemble-documentation)
