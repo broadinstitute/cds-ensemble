@@ -57,7 +57,7 @@ cds-ensemble prepare-x \
 
 Prepares the features to be consumed by `fit-model`. Outputs file in the format `[OUTPUT_FILE_PATH].[OUTPUT_FORMAT]`, and also outputs a feature metadata file with path `[OUTPUT_FILE_PATH]_feature_metadata.[OUTPUT_FORMAT]` and valid samples per model file with path `[OUTPUT_FILE_PATH]_valid_samples.[OUTPUT_FORMAT]`. `fit-models` assumes those files exist.
 
-#### Parameters
+#### Options
 - `--targets` \
   Matrix of the targets we are modeling
 
@@ -101,7 +101,7 @@ cds-ensemble fit-model \
 
 Prepares the features to be consumed by `fit-model`
 
-#### Parameters
+#### Options
 - `--x` \
   Matrix of prepared features (output of `prepare-x`)
 
@@ -115,10 +115,10 @@ Prepares the features to be consumed by `fit-model`
   Name of model to fit (as defined in the model configurations)
 
 - `task-mode` (optional | default: regress) \
-  TODO
+  `regress` or `classify`
 
 - `n-folds` (optional | default: 3) \
-  TODO
+  Number of cross validation folds
 
 - `related-table` (optional\*) \
   Table with relationships for genes, used for models with `Relation: MatchRelated`. See [Related features](#related-features) for file format.
