@@ -1,8 +1,10 @@
+import csv
 import re
 import os
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
+import pyarrow
 import yaml
 
 from .data_models import ModelConfig, FeatureInfo
@@ -10,6 +12,12 @@ from .exceptions import MalformedGeneLabelException
 
 GENE_LABEL_FORMAT = r"^[A-Z\d\-]+ \(\d+\)$"
 GENE_LABEL_FORMAT_GROUPS = r"^([A-Z\d\-]+) \((\d+)\)$"
+
+
+def _get_delimeter(file_path: str) -> str:
+    with open(file_path) as f:
+        dialect = csv.Sniffer().sniff(f.readline())
+    return dialect.delimiter
 
 
 def read_dataframe(file_path: str, set_index: bool = True) -> pd.DataFrame:
@@ -22,18 +30,16 @@ def read_dataframe(file_path: str, set_index: bool = True) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame stored at file_path
     """
-    _, file_extension = os.path.splitext(file_path)
-    if file_extension in {".ftr", ".feather"}:
+    try:
         df = pd.read_feather(file_path)
         if set_index:
             df = df.set_index(df.columns[0])
-        return df
 
-    return pd.read_csv(
-        file_path,
-        sep="\t" if file_extension == ".tsv" else ",",
-        index_col=0 if set_index else None,
-    )
+    except pyarrow.ArrowInvalid:
+        df = pd.read_table(
+            file_path, sep=_get_delimeter(file_path), index_col=0 if set_index else None
+        )
+    return df
 
 
 def read_dataframe_row_headers(file_path: str) -> pd.Series:
@@ -46,13 +52,10 @@ def read_dataframe_row_headers(file_path: str) -> pd.Series:
     Returns:
         pd.Series: Series with the first column of the file
     """
-    _, file_extension = os.path.splitext(file_path)
-    if file_extension in {".ftr", ".feather"}:
+    try:
         df = pd.read_feather(file_path, columns=[0])
-    else:
-        df = pd.read_csv(
-            file_path, sep="\t" if file_extension == ".tsv" else ",", usecols=[0]
-        )
+    except pyarrow.ArrowInvalid:
+        df = pd.read_csv(file_path, sep=_get_delimeter(file_path), usecols=[0])
     return df.squeeze()
 
 
