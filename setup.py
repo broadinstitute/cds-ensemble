@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="cds-ensemble",
     version="0.1",
-    py_modules=[],
+    py_modules=["cds_ensemble"],
     install_requires=[
         "click>=7",
         "pandas>=1",
