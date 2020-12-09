@@ -7,6 +7,7 @@ setup(
     install_requires=[
         "click>=7",
         "pandas>=1",
+        "pyarrow>=1",
         "pyyaml>=5",
         "scikit-learn>=0",
         "typing-extensions>=3",
