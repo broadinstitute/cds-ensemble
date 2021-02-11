@@ -70,6 +70,9 @@ def filter_run_ensemble_inputs(
     else:
         raise ValueError("Only one of target_range and targets can be specified")
 
+    # Drop samples with no data for targets
+    Y = Y.dropna(how="all", axis=0)
+
     return X, Y, start_col, end_col
 
 
