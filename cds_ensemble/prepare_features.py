@@ -270,6 +270,15 @@ def prepare_features(
         if feature_info.dataset_name in features_in_any_model
     ]
 
+    missing_features = features_in_any_model - set(
+        feature_info.dataset_name for feature_info in subsetted_feature_infos
+    )
+
+    if len(missing_features) > 0:
+        raise ValueError(
+            f"Features {missing_features} listed in model definitions, but not found in feature info table."
+        )
+
     combined_features, feature_metadata = prepare_universal_feature_set(
         target_samples, subsetted_feature_infos
     )

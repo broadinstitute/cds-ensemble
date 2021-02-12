@@ -134,9 +134,12 @@ def prepare_x(
     except ValueError as e:
         raise click.ClickException(str(e))
 
-    combined_features, feature_metadata, model_valid_samples = prepare_features(
-        model_configs, target_samples, feature_infos, confounders
-    )
+    try:
+        combined_features, feature_metadata, model_valid_samples = prepare_features(
+            model_configs, target_samples, feature_infos, confounders
+        )
+    except ValueError as e:
+        raise click.ClickException(str(e))
 
     file_prefix, _ = os.path.splitext(output)
     if output_format == ".csv":
