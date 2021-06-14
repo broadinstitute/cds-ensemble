@@ -1,32 +1,22 @@
 import gc
-import json
 import math
-import os
 import random
+import re
 from itertools import chain
 from time import time
 from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.feature_selection import SelectKBest, f_regression
+from sklearn.metrics import r2_score, roc_auc_score
+from sklearn.model_selection import KFold, StratifiedKFold
 from typing_extensions import TypedDict
 
-import pandas as pd
-import numpy as np
-from sklearn.linear_model import LinearRegression, ElasticNet
-from sklearn.model_selection import StratifiedKFold, KFold
-from sklearn.metrics import roc_auc_score, make_scorer, r2_score
-from sklearn.feature_selection import (
-    SelectKBest,
-    VarianceThreshold,
-    mutual_info_regression,
-    f_regression,
-)
-from sklearn.base import BaseEstimator
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.neighbors import KNeighborsRegressor
-from scipy.stats import pearsonr
-
 from .data_models import ModelConfig
-from .parsing_utilities import split_gene_label_str
 from .exceptions import MalformedGeneLabelException
+from .parsing_utilities import split_gene_label_str
 
 
 def filter_run_ensemble_inputs(
@@ -584,7 +574,7 @@ def run_model(
         constant_features = [
             s
             for s in X.columns
-            if any(s.endswith(end.replace(r"[\s-]", "_")) for end in model.exempt)
+            if any(s.endswith(re.sub(r"[\s-]", "_", end)) for end in model.exempt)
         ]
     else:
         constant_features = []
