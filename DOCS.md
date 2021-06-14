@@ -41,6 +41,9 @@ cds-ensemble prepare-y --input targets.tsv --output prepared_targets --top-varia
 cds-ensemble prepare-y --input targets.ftr --output prepared_targets --gene-filter SOX10,NRAS,BRAF
 ```
 
+#### Output format
+A feather file that contains a subset of the data in the input file.
+
 [Top](#cds-ensemble-documentation)
 
 ### prepare-x
@@ -59,7 +62,7 @@ Prepares the features to be consumed by `fit-model`. Outputs file in the format 
 
 #### Options
 - `--targets` \
-  Matrix of the targets we are modeling
+  Matrix of the targets we are modeling (output of `prepare-y`)
 
 - `--model-config` \
   The file with model configurations (need to define format of this below) TODO
@@ -84,6 +87,11 @@ Prepares the features to be consumed by `fit-model`. Outputs file in the format 
 ```shell
 cds-ensemble prepare-x --model-config model-config.yaml --output x_output --targets prepared_targets.ftr --feature-info feature-info.csv --output-related related
 ```
+
+#### Output format
+- File with filtered targets located at [OUTPUT_FILE_PATH][.csv|.ftr]
+- If output-related, a feather file of "related" targets (genes) located at [RELATED_OUTPUT_FILE_PATH]. The file contains a table with columns `target_gene_symbol`, `target_entrez_id`, `partner_gene_symbol`, and `partner_entrez_id`. "Target" and "partner" refer to the two genes that are related according to the related dataset provided. Gene (HUGO) symbol (string) and Entrez ID (integer) are parsed from the related dataset provided.
+- A feather file containing feature metadata. Feature metadata is a table of metadata about all the features in all the datasets in `feature-info` that are used in the models defined in `model-config`. The table consists of the columns `feature_id`, `feature_name`, `dataset`, `gene_symbol`, and `entrez_id`. `dataset` is the name of the dataset as specified in `feature-info`, `feature_name` is the original name of the feature in the dataset, and `feature_id` is a combination of `feature_name` and `dataset`, with the whitespace characters turned into underscores. `gene_symbol` and `entrez_id` are parsed from the `feature_name` if `feature_name` is in the format `HUGO_SYMBOL (ENTREZ_ID)`, or null otherwise.
 
 [Top](#cds-ensemble-documentation)
 

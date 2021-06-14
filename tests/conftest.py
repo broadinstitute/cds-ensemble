@@ -29,6 +29,7 @@ def feature_info_file(tmpdir):
                 "full_table",
                 "partial_matrix",
                 "partial_table",
+                "related",
             ]
         ],
         columns=["dataset", "filename"],
