@@ -579,7 +579,9 @@ def run_model(
 
     if model.exempt is not None:
         constant_features = [
-            s for s in X.columns if any(s.endswith(end) for end in model.exempt)
+            s
+            for s in X.columns
+            if any(s.endswith(end.replace(r"[\s-]", "_")) for end in model.exempt)
         ]
     else:
         constant_features = []
