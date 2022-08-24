@@ -66,12 +66,31 @@ def read_model_config(file_path: str) -> Dict[str, ModelConfig]:
     model_configs: Dict[str, ModelConfig] = {}
     for model_name, model_config in raw_model_configs.items():
         try:
+            #Feature selection was originally the top 1000 most correlated features
+            #For backwards compatibility this parameter is set to correlation if missing
+            feature_selection_wdefault = "correlation" 
+            if model_config.get("Feature_selection") is not None:
+                feature_selection_wdefault = model_config.get("Feature_selection")
+            
+            #This variable defines the number of features to save the importance values
+            #Posible inputs are an int or the str 'all' which gets passed on as None
+            input_var = model_config.get('Feature_importance_topn')
+            feat_imp_topn_wdefault = 10
+            if input_var is None:
+                feat_imp_topn_wdefault = 10
+            elif isinstance(input_var, str) and input_var.lower().__eq__("all"):
+                feat_imp_topn_wdefault = None
+            elif isinstance(input_var, int):
+                feat_imp_topn_wdefault = max(10,input_var)
+                
             model_configs[model_name] = ModelConfig(
                 name=model_name,
                 features=model_config["Features"],
                 required_features=model_config["Required"],
                 related_dataset=model_config.get("Related"),
                 relation=model_config["Relation"],
+                feature_selection=feature_selection_wdefault,
+                feat_imp_topn=feat_imp_topn_wdefault,
                 exempt=model_config.get("Exempt"),
             )
         except KeyError as e:

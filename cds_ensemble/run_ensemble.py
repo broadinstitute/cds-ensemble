@@ -1,3 +1,4 @@
+import os
 import gc
 import math
 import random
@@ -131,8 +132,7 @@ class QuantileKFold(KFold):
 
         split_generator = split_pairs(df=df, nfolds=self.n_splits)
         return split_generator
-
-
+    
 def single_fit(
     column,
     X,
@@ -168,6 +168,7 @@ def single_fit(
                 "Feature set for model %r contains nulls. Axial sums of nulls:\n%r\n\n%r"
                 % (model, x.isnull().sum(), x.isnull().sum(axis=1))
             )
+
         if rounding:
             splits = splitter.split(y > 0.5, y > 0.5)
         else:
@@ -214,7 +215,6 @@ def single_fit(
         "predictions": prediction,
     }
 
-
 ##############################################################
 #################### E N S E M B L E #########################
 ##############################################################
@@ -228,6 +228,7 @@ class EnsembleRegressor:
         scoring=soft_roc_auc,
         Splitter=StratifiedKFold,
         rounding=False,
+        feat_imp_topn=10
     ):
 
         """
@@ -244,7 +245,11 @@ class EnsembleRegressor:
         self.scoring = scoring
         self.rounding = rounding
         self.predictions = None
+        self.feat_imp_topn = feat_imp_topn
 
+    def get_important_features(self):
+        return self.important_features
+        
     def check_x(self, X):
         xerror = ValueError(
             "X must be a list or array with a feature set dataframe of matching indices for each model \
@@ -290,6 +295,7 @@ class EnsembleRegressor:
                 splitter=self.splitter,
                 scoring=self.scoring,
                 rounding=self.rounding,
+                nfeatures=self.feat_imp_topn
             )
             for key in outputs.keys():
                 outputs[key][col] = output[key]
@@ -332,11 +338,13 @@ class EnsembleRegressor:
             index=X[0].index,
         )
 
+    # Legacy wide format of feature importance with targets as rows and top 10 features as columns
     def format_results(self):
         columns = ["gene", "model"]
         for i in range(self.nfolds):
             columns.append("score%i" % i)
         columns.append("best")
+        
         for i in range(10):
             columns.extend(["feature%i" % i, "feature%i_importance" % i])
 
@@ -362,9 +370,30 @@ class EnsembleRegressor:
                 melted = melted.append(row, ignore_index=True)
         return melted
 
+    # Long format of feature importance to accommodate different numbers of significant features per target
+    def format_feature_importance(self):
+        feat_output = self.important_features
+        df_list = []
+        for g in feat_output.keys():
+            tmp_series = feat_output[g][0]
+            tmp_df = pd.DataFrame({'feature': tmp_series.index,
+                                   'importance': tmp_series.values,
+                                   'target': g})
+            df_list.append(tmp_df)
+        feat_long_df = pd.concat(df_list)
+        return feat_long_df
+        
+    
     def save_results(self, feat_outfile, pred_outfile):
+        #Legacy feature importance output format of top 10 features
         melted = self.format_results()
         melted.to_csv(feat_outfile, index=None)
+        
+        #Number of feature importances per model set by topn variable in model config
+        feat_long_df = self.format_feature_importance()
+        file_prefix, ext = os.path.splitext(feat_outfile)
+        long_outfile = file_prefix + "_long" + ext
+        feat_long_df.to_csv(long_outfile, index=None)
 
         # This all outputs to a single file. Should this be multiple files, or is there
         # only one model type/predictions?
@@ -517,7 +546,7 @@ class PandasForest(RandomForestRegressor):
         imp = pd.Series(self.feature_importances_, index=self.feature_names)
         return imp.sort_values(ascending=False)[:n_features]
 
-
+    
 def run_model(
     X: pd.DataFrame,
     Y: pd.DataFrame,
@@ -590,10 +619,10 @@ def run_model(
     )
     new_model: ModelInputs = {"Name": model.name}
 
-    if (model.relation == "All") and (X.shape[1] <= 1000):
+    if (model.relation == "All") and (model.feature_selection == "none"):
         new_model["ModelClass"] = PandasForest
         new_model["kwargs"] = dict(max_depth=8, n_estimators=100, min_samples_leaf=5)
-    if (model.relation == "All") and (X.shape[1] > 1000):
+    elif (model.relation == "All") and (model.feature_selection == "correlation"):
         new_model["ModelClass"] = KFilteredForest
         new_model["kwargs"] = dict(max_depth=8, n_estimators=100, min_samples_leaf=5)
     elif model.relation == "MatchTarget":
@@ -640,6 +669,7 @@ def run_model(
             rounding=True,
             Splitter=StratifiedKFold,
             scoring=soft_roc_auc,
+            feat_imp_topn=model.feat_imp_topn
         )
     elif task == "regress":
         ensemble = EnsembleRegressor(
@@ -648,6 +678,7 @@ def run_model(
             rounding=False,
             Splitter=QuantileKFold,
             scoring=r2_score,
+            feat_imp_topn=model.feat_imp_topn
         )
     else:
         raise ValueError('task must be "classify" or "regress"')

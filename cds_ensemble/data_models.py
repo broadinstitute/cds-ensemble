@@ -11,6 +11,8 @@ class ModelConfig:
         required_features: List[str],
         related_dataset: Optional[str],
         relation: str,
+        feature_selection: str,
+        feat_imp_topn: int,
         exempt: Optional[List[str]],
     ):
         self.name = name
@@ -18,6 +20,8 @@ class ModelConfig:
         self.required_features = required_features
         self.related_dataset = related_dataset
         self.relation = relation
+        self.feature_selection = feature_selection
+        self.feat_imp_topn = feat_imp_topn
         self.exempt = exempt
 
 
