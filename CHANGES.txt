@@ -1,0 +1,3 @@
+Added two new parameters to the model configuration: Feature_selection, Feature_importance_topn. These parameters control a new output csv, which is the feature importance vales for the specified number of features in a long format. If these parameters are missing from the config file it reverts to the method from the prior version which selects the top 1000 most correlated features to include in the model and outputs the feature importances for the top 10. 
+
+
