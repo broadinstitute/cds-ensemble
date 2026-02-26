@@ -501,6 +501,50 @@ class KFilteredForest(RandomForestRegressor):
         imp = pd.Series(self.feature_importances_, index=self.feature_names)
         return imp.sort_values(ascending=False)[:n_features]
 
+class BogusEnsemble:
+    def __init__(self, targets, samples, model, top_n, nfolds):
+        self.nfolds = nfolds
+        self.model = model
+        self.top_n = top_n
+        self.targets = targets
+        self.samples = samples
+
+    def save_results(self, feature_file_path, predictions_file_path):
+        # make the features_file
+        # sample:
+        # gene,model,score0,score1,score2,score3,score4,best,feature0,feature0_importance,feature1,feature1_importance,feature2,feature2_importance,feature3,feature3_importance,feature4,feature4_importance,feature5,feature5_importance,feature6,feature6_importance,feature7,feature7_importance,feature8,feature8_importance,feature9,feature9_importance
+        # RGS2 (5997),Related,0.06471196187331774,0.1146279381673232,0.1086815442125918,-0.014651457705020965,0.02726712572331791,True,CasActivity_crispr_confounders,0.06187336389318614,ScreenFPR_crispr_confounders,0.04370822804451761,ScreenMedianEssentialDepletion_crispr_confounders,0.04282315156351761,ScreenNNMD_crispr_confounders,0.025410613940554865,ScreenROCAUC_crispr_confounders,0.021000058979961267,ScreenMADNonessentials_crispr_confounders,0.01891194956566079,MON1A_(84315)_RNAseq,0.01332746956748942,ScreenMADEssentials_crispr_confounders,0.011934924192498666,MON1A_(84315)_CN,0.011929959401096441,CHD3_(1107)_RNAseq,0.011822485364727377
+
+        features_table_cols = ["gene", "model"]
+        for i in range(self.nfolds):
+            features_table_cols.append(f"score{i}")
+        features_table_cols.append("best")
+        for i in range(self.top_n):
+            features_table_cols.extend([f"feature{i}", f"feature{i}_importance"])
+        rows = []
+        for target in self.targets:
+            row = {col: pd.NA for col in features_table_cols}
+            row["best"] = "False"
+            row["gene"] = target
+            row["model"] = self.model
+            rows.append(row)
+        df = pd.DataFrame(rows, columns=features_table_cols)
+        df.to_csv(feature_file_path, index=False)
+
+        # make the predictions file
+        # sample: Row.name,RGS2 (5997),RGS20 (8601),RGS21 (431704),RGS22 (26166),RGS3 (5998),RGS4 (5999),RGS5 (8490),RGS6 (9628),RGS7 (6000),RGS7BP (401190)
+        # ACH-000208,-0.13226353896347068,0.010234398971580492,-0.01062930635446206,0.062382314447098214,-0.0014926357860092733,0.03907420537432578,0.16500149683242857,-0.008528366762044833,0.009945912533090833,0.0067523898875571755
+        # ACH-000381,-0.06529517223163701,0.009006151985379358,0.001709141434118836,-0.033790842006468466,-0.008362480948481315,0.1316203055955582,0.1105027989178931,-0.04808614467392679,0.07743513404641876,-0.013084708152628658
+        predictions_cols = ["Row.name"] + self.targets
+        rows = []
+        for sample in self.samples:
+            row = {col: pd.NA for col in predictions_cols}
+            row["Row.name"] = sample
+            rows.append(row)
+        df = pd.DataFrame(rows, columns=predictions_cols)
+        df.to_csv(predictions_file_path, index=False)
+
+
 
 class PandasForest(RandomForestRegressor):
     """
@@ -566,9 +610,14 @@ def run_model(
     print("aligning features")
     shared_lines = list(set(X.index) & set(Y.index))
     assert len(shared_lines) > 0, "no shared lines found: \n\n features %r\n\n "
+
     Y = Y.loc[shared_lines]
     X = X.loc[shared_lines]
     print("Number of shared cell lines: " + str(len(shared_lines)))
+    if len(shared_lines) < 10:
+        print("Warning: tiny number of samples. Returning bogus result to avoid crashing")
+        return BogusEnsemble(Y.columns.to_list(), X.index.to_list(), model.name, 10, nfolds)
+
 
     if model.exempt is not None:
         constant_features = [
